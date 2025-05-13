@@ -1,7 +1,6 @@
 # Pathshala Election System
 
-![Pathshala Logo](static/img/logos/logo.png)
-
+<img src="static/img/logos/logo.png" alt="Pathshala Logo" width="150">
 
 School captain election system designed for election in [Pathshala Nepal Foundation](https://pathshala.edu.np/). This application helps schools conduct fair and transparent elections for student leadership positions.
 
@@ -57,7 +56,7 @@ pip install -r requirements.txt
 python -c "from app import init_db; init_db()"
 ```
 
-5. Run the application
+5. Run the application in production mode
 ```bash
 python app.py
 ```
@@ -68,6 +67,15 @@ python app.py
 - Default admin credentials: 
   - Username: admin
   - Password: admin
+
+## Production Deployment
+
+For production deployment, we recommend:
+- Using a WSGI server like Gunicorn or uWSGI
+- Setting up a reverse proxy with Nginx or Apache
+- Ensuring all security headers are properly configured
+- Running on HTTPS only
+- Setting strong, unique values for all secret keys
 
 ## Usage
 
@@ -97,78 +105,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Author
 
 Developed by [Pradip Dhungana](https://dhunganapradip.com.np)
-
-## Contact
-
-For support or inquiries, please contact:
-- Email: [dhungana.pradip188@gmail.com](mailto:dhungana.pradip188@gmail.com)
-- GitHub: [@dhunganaPradeep](https://github.com/dhunganaPradeep)
-
-## Deployment on PythonAnywhere
-
-### Setup Instructions
-
-1. Sign up/login to [PythonAnywhere](https://www.pythonanywhere.com/)
-
-2. Go to the Dashboard and open a Bash console
-
-3. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/Election.git
-   # Or upload your files via the Files tab
-   ```
-
-4. Create a virtual environment:
-   ```bash
-   mkvirtualenv --python=/usr/bin/python3.9 election-env
-   ```
-
-5. Install the dependencies:
-   ```bash
-   cd Election
-   pip install -r requirements.txt
-   ```
-
-6. Initialize the database (if not already done):
-   ```bash
-   python
-   >>> from app import init_db
-   >>> init_db()
-   >>> exit()
-   ```
-
-7. Configure the web app:
-   - Go to the Web tab in PythonAnywhere
-   - Create a new web app
-   - Select "Manual Configuration"
-   - Select Python 3.9
-   - Set the path to your virtualenv (e.g., `/home/yourusername/.virtualenvs/election-env`)
-   - Set the WSGI configuration file
-
-8. Edit the WSGI configuration file:
-   - Replace the existing content with the provided wsgi.py file
-   - Make sure to update the path to your project directory: `/home/yourusername/Election`
-
-9. Create required directories:
-   ```bash
-   mkdir -p uploads
-   mkdir -p flask_session
-   mkdir -p static/img/candidates
-   mkdir -p static/img/logos
-   ```
-
-10. Configure static files:
-    - In the Web tab, add a static files mapping:
-    - URL: `/static/` to Directory: `/home/yourusername/Election/static/`
-
-11. Reload the web app and access it at yourusername.pythonanywhere.com
-
-## Important Notes
-
-- Make sure to modify the WSGI file to use your actual PythonAnywhere username
-- If you need to make database changes, you can access sqlite via:
-  ```bash
-  sqlite3 election.db
-  ```
-- Set the `SECRET_KEY` in app.py to a unique value for production
-- PythonAnywhere free tier has file size limitations; ensure your uploads respect these limits 
