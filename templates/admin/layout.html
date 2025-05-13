@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin Dashboard - School Captain Election{% endblock %}</title>
+    
+    <!-- CSRF Token for AJAX requests -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    
+    <!-- jQuery must be loaded first -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- DataTables CSS - Using cdnjs (allowed domain) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/css/jquery.dataTables.min.css">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            light: '#4ade80',
+                            DEFAULT: '#16a34a',
+                            dark: '#166534',
+                        },
+                        secondary: {
+                            light: '#fb923c',
+                            DEFAULT: '#f97316',
+                            dark: '#c2410c',
+                        },
+                        accent: {
+                            purple: '#a855f7',
+                            blue: '#3b82f6',
+                            pink: '#ec4899',
+                            teal: '#14b8a6',
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <style>
+        .toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 9999;
+            max-width: 24rem;
+        }
+        
+        .toast {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transform: translateX(120%);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        .toast-success {
+            background-color: #dcfce7;
+            border-left: 4px solid #16a34a;
+            color: #166534;
+        }
+        
+        .toast-error {
+            background-color: #fee2e2;
+            border-left: 4px solid #dc2626;
+            color: #991b1b;
+        }
+        
+        .toast-info {
+            background-color: #dbeafe;
+            border-left: 4px solid #2563eb;
+            color: #1e40af;
+        }
+        
+        .toast-warning {
+            background-color: #ffedd5;
+            border-left: 4px solid #f97316;
+            color: #c2410c;
+        }
+        
+        .toast-icon {
+            margin-right: 0.75rem;
+            font-size: 1.25rem;
+        }
+        
+        .toast-message {
+            flex: 1;
+        }
+        
+        .toast-close {
+            cursor: pointer;
+            margin-left: 0.75rem;
+            opacity: 0.5;
+            transition: opacity 0.2s ease;
+        }
+        
+        .toast-close:hover {
+            opacity: 1;
+        }
+        
+        /* Custom DataTables styling to avoid loading Bootstrap */
+        .dataTables_wrapper {
+            position: relative;
+            clear: both;
+            zoom: 1;
+        }
+        .dataTables_length {
+            float: left;
+            margin-bottom: 10px;
+        }
+        .dataTables_filter {
+            float: right;
+            text-align: right;
+            margin-bottom: 10px;
+        }
+        .dataTables_info {
+            clear: both;
+            float: left;
+            margin-top: 10px;
+        }
+        .dataTables_paginate {
+            float: right;
+            text-align: right;
+            margin-top: 10px;
+        }
+        .dataTables_paginate .paginate_button {
+            padding: 0.3em 0.8em;
+            margin-left: 2px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            border-radius: 0.2em;
+        }
+        .dataTables_paginate .paginate_button.current {
+            background: #16a34a;
+            color: white;
+            border-color: #16a34a;
+        }
+        .dataTables_paginate .paginate_button:hover:not(.current) {
+            background: #f3f4f6;
+        }
+        
+        /* Replace DataTables images with Font Awesome icons to avoid CSP issues */
+        table.dataTable thead .sorting {
+            background-image: none !important;
+            position: relative;
+        }
+        table.dataTable thead .sorting:after {
+            content: "\f0dc";
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            position: absolute;
+            right: 8px;
+            color: #aaa;
+        }
+        table.dataTable thead .sorting_asc {
+            background-image: none !important;
+            position: relative;
+        }
+        table.dataTable thead .sorting_asc:after {
+            content: "\f0de";
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            position: absolute;
+            right: 8px;
+            color: #16a34a;
+        }
+        table.dataTable thead .sorting_desc {
+            background-image: none !important;
+            position: relative;
+        }
+        table.dataTable thead .sorting_desc:after {
+            content: "\f0dd";
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            position: absolute;
+            right: 8px;
+            color: #16a34a;
+        }
+    </style>
+    
+    <!-- DataTables JS - Using cdnjs (allowed domain) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js"></script>
+    
+    <script>
+        // Create DataTable polyfill if not loaded
+        $(document).ready(function() {
+            if (typeof $.fn.DataTable === 'undefined') {
+                console.warn('DataTables not loaded, creating a basic polyfill');
+                $.fn.DataTable = function(options) {
+                    console.log('Using DataTables polyfill');
+                    const table = this;
+                    
+                    // Add basic search functionality
+                    const searchDiv = $('<div class="dataTables_filter"><label>Search: <input type="search"></label></div>');
+                    table.before(searchDiv);
+                    
+                    searchDiv.find('input').on('keyup', function() {
+                        const searchText = $(this).val().toLowerCase();
+                        table.find('tbody tr').each(function() {
+                            const rowText = $(this).text().toLowerCase();
+                            $(this).toggle(rowText.indexOf(searchText) > -1);
+                        });
+                    });
+                    
+                    return this;
+                };
+            }
+        });
+    </script>
+    
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-50">
+    <div id="toast-container" class="toast-container"></div>
+    
+    <div class="flex h-screen bg-gray-50">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-10 w-64 bg-gray-800 text-white transition-transform duration-300 ease-in-out transform">
+            <div class="p-4 flex items-center border-b border-gray-700">
+                <img src="/static/img/logos/logo.png" alt="School Logo" class="h-8 mr-3">
+                <span class="font-semibold text-lg">Pathshala Admin</span>
+            </div>
+            
+            <nav class="mt-5 px-2">
+                <a href="{{ url_for('admin_dashboard') }}" class="group flex items-center px-3 py-2.5 mb-1 rounded-md {% if active_page == 'dashboard' %}bg-primary text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    <span>Dashboard</span>
+                </a>
+                
+                <a href="{{ url_for('admin_candidates') }}" class="group flex items-center px-3 py-2.5 mb-1 rounded-md {% if active_page == 'candidates' %}bg-primary text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
+                    <i class="fas fa-user-tie mr-3"></i>
+                    <span>Candidates</span>
+                </a>
+                
+                <a href="{{ url_for('admin_students') }}" class="group flex items-center px-3 py-2.5 mb-1 rounded-md {% if active_page == 'students' %}bg-primary text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
+                    <i class="fas fa-user-graduate mr-3"></i>
+                    <span>Students</span>
+                </a>
+                
+                <a href="{{ url_for('admin_teachers') }}" class="group flex items-center px-3 py-2.5 mb-1 rounded-md {% if active_page == 'teachers' %}bg-primary text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
+                    <i class="fas fa-chalkboard-teacher mr-3"></i>
+                    <span>Teachers</span>
+                </a>
+                
+                <a href="{{ url_for('admin_results') }}" class="group flex items-center px-3 py-2.5 mb-1 rounded-md {% if active_page == 'results' %}bg-primary text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
+                    <i class="fas fa-chart-bar mr-3"></i>
+                    <span>Results</span>
+                </a>
+                
+                <div class="border-t border-gray-700 my-4"></div>
+                
+                <a href="{{ url_for('admin_reset') }}" class="group flex items-center px-3 py-2.5 mb-1 rounded-md {% if active_page == 'reset' %}bg-red-600 text-white{% else %}text-gray-300 hover:bg-red-700 hover:text-white{% endif %}">
+                    <i class="fas fa-exclamation-triangle mr-3"></i>
+                    <span>Danger Zone</span>
+                </a>
+                
+                <a href="{{ url_for('admin_logout') }}" class="group flex items-center px-3 py-2.5 mb-1 rounded-md text-gray-300 hover:bg-gray-700 hover:text-white">
+                    <i class="fas fa-sign-out-alt mr-3"></i>
+                    <span>Logout</span>
+                </a>
+            </nav>
+        </aside>
+        
+        <!-- Mobile sidebar toggle -->
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[5] hidden"></div>
+        
+        <!-- Main Content -->
+        <div id="main-content" class="flex-1 ml-64 transition-all duration-300 ease-in-out">
+            <header class="bg-white shadow-sm">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+                    <div class="flex items-center">
+                        <button id="mobile-menu-button" class="md:hidden mr-3 text-gray-600 hover:text-gray-900 focus:outline-none">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+                        <button id="sidebar-toggle" class="hidden md:block mr-3 text-gray-600 hover:text-gray-900 focus:outline-none">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+                        <h1 class="text-xl font-medium text-gray-800">{% block page_title %}Dashboard{% endblock %}</h1>
+                    </div>
+                    
+                    <div class="flex items-center">
+                        <span class="text-gray-500 mr-4">
+                            <i class="fas fa-clock mr-1"></i>
+                            <span id="current-time"></span>
+                        </span>
+                        
+                        <div class="relative">
+                            <button id="user-menu-button" class="flex items-center px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
+                                <i class="fas fa-user-shield mr-2 text-primary"></i>
+                                <span class="font-medium">Admin</span>
+                                <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                            </button>
+                            
+                            <div id="user-dropdown" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden z-10">
+                                <a href="{{ url_for('admin_logout') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('main-content');
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            
+            const userMenuButton = document.getElementById('user-menu-button');
+            const userDropdown = document.getElementById('user-dropdown');
+            
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('-translate-x-full');
+                mainContent.classList.toggle('ml-0');
+                mainContent.classList.toggle('ml-64');
+            });
+            
+            mobileMenuButton.addEventListener('click', function() {
+                sidebar.classList.toggle('-translate-x-full');
+                sidebarOverlay.classList.toggle('hidden');
+            });
+            
+            sidebarOverlay.addEventListener('click', function() {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            });
+            
+            userMenuButton.addEventListener('click', function() {
+                userDropdown.classList.toggle('hidden');
+            });
+            
+            document.addEventListener('click', function(event) {
+                if (!userMenuButton.contains(event.target) && !userDropdown.contains(event.target)) {
+                    userDropdown.classList.add('hidden');
+                }
+            });
+            
+            function updateCurrentTime() {
+                const now = new Date();
+                const timeElement = document.getElementById('current-time');
+                if (timeElement) {
+                    timeElement.textContent = now.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+            }
+            
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 60000);
+            
+            window.showToast = function(message, type = 'info', duration = 3000) {
+                const toastContainer = document.getElementById('toast-container');
+                
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+
+                let icon = '';
+                switch(type) {
+                    case 'success':
+                        icon = '<i class="fas fa-check-circle toast-icon"></i>';
+                        break;
+                    case 'error':
+                        icon = '<i class="fas fa-exclamation-circle toast-icon"></i>';
+                        break;
+                    case 'warning':
+                        icon = '<i class="fas fa-exclamation-triangle toast-icon"></i>';
+                        break;
+                    default:
+                        icon = '<i class="fas fa-info-circle toast-icon"></i>';
+                }
+                
+                toast.innerHTML = `
+                    ${icon}
+                    <div class="toast-message">${message}</div>
+                    <div class="toast-close" onclick="this.parentElement.remove()">
+                        <i class="fas fa-times"></i>
+                    </div>
+                `;
+                
+                toastContainer.appendChild(toast);
+                setTimeout(() => {
+                    toast.classList.add('show');
+                }, 10);
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }, duration);
+                
+                return toast;
+            };
+            
+            // Check if DataTables is ready
+            console.log('DataTables available:', typeof $.fn.DataTable !== 'undefined');
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html> 

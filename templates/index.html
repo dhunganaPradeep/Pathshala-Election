@@ -1,0 +1,214 @@
+{% extends "layout.html" %}
+
+{% block title %}Pathshala Election 2082 - Voter Login{% endblock %}
+
+{% block head %}
+<!-- Add link to custom CSS file -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+<style>
+    .login-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, rgba(22, 163, 74, 0.2) 0%, rgba(249, 115, 22, 0.2) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 0;
+    }
+    
+    .code-input {
+        letter-spacing: 10px;
+        text-align: center;
+        font-weight: 700;
+    }
+    
+    .floating {
+        animation: floating 3s ease-in-out infinite;
+    }
+    
+    @keyframes floating {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-15px); }
+        100% { transform: translateY(0px); }
+    }
+</style>
+{% endblock %}
+
+{% block full_width_content %}
+<div class="login-container">
+    <div class="container mx-auto px-4">
+        <div class="flex justify-center">
+            <div class="w-full max-w-md">
+                <div class="bg-white rounded-lg shadow-lg overflow-hidden transition duration-300 transform hover:-translate-y-2 hover:shadow-xl animate-fadeInUp">
+                    <div class="bg-gradient-to-r from-primary-DEFAULT to-secondary-DEFAULT p-8 text-center relative">
+                        <img src="/static/img/logos/logo.png" alt="School Logo" class="h-16 mx-auto mb-3">
+                        <h2 class="text-2xl font-bold text-orange-500">Pathshala Election</h2>
+                        <p class="text-black text-opacity-90 mt-1 font-bold text-green-800">School Captain Election 2082</p>
+                    </div>
+                    
+                    <div class="p-6">
+                        <div id="error-message" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 animate-shake"></div>
+                        
+                        <form id="voting-code-form" class="space-y-4">
+                            <div class="text-center mb-4">
+                                <h4 class="text-lg font-semibold text-gray-800">Enter Your Voting Code</h4>
+                                <p class="text-sm text-gray-500">Please enter the code provided by your administrator</p>
+                            </div>
+                            
+                            <div>
+                                <input type="text" id="voting-code" 
+                                    class="w-full h-16 text-2xl code-input px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-DEFAULT text-gray-800"
+                                    maxlength="6" autocomplete="off" required autofocus>
+                            </div>
+                            
+                            <div>
+                                <button type="submit" 
+                                    class="w-full h-14 bg-primary-dark text-white text-lg font-semibold py-3 px-4 rounded-md transition duration-300 flex items-center justify-center shadow-md hover:shadow-lg">
+                                    <i class="fas fa-sign-in-alt mr-2"></i>
+                                    Verify Code
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="bg-gray-50 p-3 text-center text-gray-500 text-sm border-t">
+                        <p>© 2082 Pathshala Nepal Foundation. All rights reserved.</p>
+                        <p>Developed by <a href="https://dhunganapradip.com.np" target="_blank" class="text-primary-DEFAULT hover:text-primary-dark">Pradeep Dhungana</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('voting-code-form');
+        const codeInput = document.getElementById('voting-code');
+        const errorMessage = document.getElementById('error-message');
+        const loginCard = document.querySelector('.animate-fadeInUp');
+        
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const code = codeInput.value.trim();
+            if (!code) {
+                showError('Please enter your voting code');
+                return;
+            }
+            
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Verifying...';
+            
+            // Create FormData object
+            const formData = new FormData();
+            formData.append('code', code);
+            
+            // Add CSRF token if available
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (csrfToken) {
+                formData.append('csrf_token', csrfToken.getAttribute('content'));
+            }
+            
+            // Create URL-encoded form data
+            const urlEncodedData = new URLSearchParams();
+            for (const pair of formData) {
+                urlEncodedData.append(pair[0], pair[1]);
+            }
+            
+            fetch('/verify_code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: urlEncodedData
+            })
+            .then(response => {
+                // Log response details for debugging
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                // Check if the response is a redirect
+                if (response.redirected) {
+                    console.log('Response is a redirect to:', response.url);
+                    window.location.href = response.url;
+                    return null;
+                }
+                
+                // Clone the response so we can log the body and still parse it
+                const clonedResponse = response.clone();
+                
+                // For debugging, log the raw response
+                clonedResponse.text().then(text => {
+                    console.log('Raw response:', text);
+                });
+                
+                // Check if the response is JSON
+                const contentType = response.headers.get('content-type');
+                console.log('Content-Type:', contentType);
+                
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
+                } else {
+                    // Handle HTML or other non-JSON responses
+                    return response.text().then(text => {
+                        console.log('Non-JSON response:', text);
+                        // Create a more helpful error message if possible
+                        if (text.includes('<!DOCTYPE html>')) {
+                            return { success: false, message: 'Server returned HTML instead of JSON. Please contact support.' };
+                        }
+                        return { success: false, message: 'An unexpected error occurred. Please try again.' };
+                    });
+                }
+            })
+            .then(data => {
+                if (!data) return; // Skip if null (redirect case)
+                
+                if (data.success) {
+                    loginCard.classList.add('transform', 'translate-y-[-100vh]', 'opacity-0');
+                    loginCard.style.transition = 'transform 0.8s ease, opacity 0.8s ease';
+                    
+                    setTimeout(() => {
+                        window.location.href = '/vote';
+                    }, 800);
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                    
+                    showError(data.message);
+                    setTimeout(() => {
+                        errorMessage.classList.add('hidden');
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+                
+                showError('Something went wrong. Please try again.');
+                console.error('Error:', error);
+            });
+        });
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+            loginCard.classList.add('animate-shake');
+            
+            setTimeout(() => {
+                loginCard.classList.remove('animate-shake');
+            }, 1000);
+        }
+        
+        codeInput.focus();
+        
+        codeInput.addEventListener('input', function(e) {
+            // Convert to uppercase and remove spaces
+            this.value = this.value.toUpperCase().replace(/\s/g, '');
+        });
+    });
+</script>
+{% endblock %} 

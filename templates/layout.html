@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{% block title %}Pathshala Election 2082{% endblock %}</title>
+    
+    <!-- CSRF Token for AJAX requests -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    
+    <!-- First load Tailwind CDN with specific version -->
+    <script src="https://cdn.tailwindcss.com?v=3.3.5"></script>
+    
+    <!-- Then configure Tailwind after the script is loaded -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof tailwind !== 'undefined') {
+                tailwind.config = {
+                    theme: {
+                        extend: {
+                            colors: {
+                                primary: {
+                                    light: '#4ade80',
+                                    DEFAULT: '#16a34a',
+                                    dark: '#166534',
+                                },
+                                secondary: {
+                                    light: '#fb923c',
+                                    DEFAULT: '#f97316',
+                                    dark: '#c2410c',
+                                },
+                                accent: {
+                                    purple: '#a855f7',
+                                    blue: '#3b82f6',
+                                    pink: '#ec4899',
+                                    teal: '#14b8a6',
+                                },
+                            },
+                        },
+                    },
+                }
+            } else {
+                console.error('Tailwind CDN failed to load properly');
+                applyFallbackStyles();
+            }
+        });
+        
+        function applyFallbackStyles() {
+            // Create fallback styles
+            const fallbackStyles = document.createElement('style');
+            fallbackStyles.textContent = `
+                .bg-white { background-color: white !important; }
+                .bg-gray-50 { background-color: #f9fafb !important; }
+                .bg-primary-DEFAULT { background-color: #16a34a !important; }
+                .bg-secondary-DEFAULT { background-color: #f97316 !important; }
+                .text-white { color: white !important; }
+                .text-gray-800 { color: #1f2937 !important; }
+                .text-gray-600 { color: #4b5563 !important; }
+                .rounded-xl { border-radius: 0.75rem !important; }
+                .rounded-full { border-radius: 9999px !important; }
+                .shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; }
+                .font-bold { font-weight: 700 !important; }
+                .p-4 { padding: 1rem !important; }
+                .px-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
+                .py-4 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+                .mx-auto { margin-left: auto !important; margin-right: auto !important; }
+                .flex { display: flex !important; }
+                .hidden { display: none !important; }
+            `;
+            document.head.appendChild(fallbackStyles);
+        }
+    </script>
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    
+    <style>
+        .toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 9999;
+            max-width: 24rem;
+        }
+        
+        .toast {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transform: translateX(120%);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        .toast-success {
+            background-color: #dcfce7;
+            border-left: 4px solid #16a34a;
+            color: #166534;
+        }
+        
+        .toast-error {
+            background-color: #fee2e2;
+            border-left: 4px solid #dc2626;
+            color: #991b1b;
+        }
+        
+        .toast-info {
+            background-color: #dbeafe;
+            border-left: 4px solid #2563eb;
+            color: #1e40af;
+        }
+        
+        .toast-warning {
+            background-color: #ffedd5;
+            border-left: 4px solid #f97316;
+            color: #c2410c;
+        }
+        
+        .toast-icon {
+            margin-right: 0.75rem;
+            font-size: 1.25rem;
+        }
+        
+        .toast-message {
+            flex: 1;
+        }
+        
+        .toast-close {
+            cursor: pointer;
+            margin-left: 0.75rem;
+            opacity: 0.5;
+            transition: opacity 0.2s ease;
+        }
+        
+        .toast-close:hover {
+            opacity: 1;
+        }
+
+        .animate-fadeIn {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        .animate-fadeInUp {
+            animation: fadeInUp 0.5s ease-in-out;
+        }
+        
+        .animate-shake {
+            animation: shake 0.8s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes fadeInUp {
+            from { 
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes shake {
+            from, to { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-50 font-sans">
+    <div id="toast-container" class="toast-container"></div>
+    
+    {% block full_width_content %}{% endblock %}
+    
+    <div class="container mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <script>
+        window.showToast = function(message, type = 'info', duration = 3000) {
+            const icons = {
+                'success': '<i class="fas fa-check-circle toast-icon"></i>',
+                'error': '<i class="fas fa-exclamation-circle toast-icon"></i>',
+                'info': '<i class="fas fa-info-circle toast-icon"></i>',
+                'warning': '<i class="fas fa-exclamation-triangle toast-icon"></i>'
+            };
+            
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                ${icons[type]}
+                <div class="toast-message">${message}</div>
+                <div class="toast-close"><i class="fas fa-times"></i></div>
+            `;
+            
+            const container = document.getElementById('toast-container');
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+            
+            const closeBtn = toast.querySelector('.toast-close');
+            closeBtn.addEventListener('click', () => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    container.removeChild(toast);
+                }, 300);
+            });
+            
+            if (duration > 0) {
+                setTimeout(() => {
+                    if (container.contains(toast)) {
+                        toast.classList.remove('show');
+                        setTimeout(() => {
+                            if (container.contains(toast)) {
+                                container.removeChild(toast);
+                            }
+                        }, 300);
+                    }
+                }, duration);
+            }
+            
+            return toast;
+        };
+    </script>
+    
+    <script>
+        window.onload = function() {
+            if(window.location.pathname !== '/') {
+                window.history.pushState(null, '', window.location.href);
+                window.onpopstate = function() {
+                    window.history.pushState(null, '', window.location.href);
+                    
+                    if(window.location.pathname === '/vote') {
+                        window.location.href = '/';
+                    }
+                    
+                    if(window.location.pathname.startsWith('/admin') && 
+                       window.location.pathname !== '/admin' && 
+                       window.location.pathname !== '/admin/login') {
+                        window.location.href = '/admin/logout';
+                    }
+                };
+            }
+        };
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html> 

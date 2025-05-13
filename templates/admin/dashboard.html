@@ -1,0 +1,184 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Admin Dashboard - School Captain Election{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+    <!-- Stats Cards -->
+    <div class="bg-white rounded-lg shadow-md p-6 flex flex-col items-center justify-center">
+        <div class="bg-primary-light bg-opacity-20 text-primary-DEFAULT rounded-full w-14 h-14 flex items-center justify-center mb-3">
+            <i class="fas fa-user-graduate text-2xl"></i>
+        </div>
+        <h3 class="text-3xl font-bold text-gray-800">{{ total_students }}</h3>
+        <p class="text-gray-500 text-sm">Total Students</p>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md p-6 flex flex-col items-center justify-center">
+        <div class="bg-blue-100 text-blue-600 rounded-full w-14 h-14 flex items-center justify-center mb-3">
+            <i class="fas fa-chalkboard-teacher text-2xl"></i>
+        </div>
+        <h3 class="text-3xl font-bold text-gray-800">{{ total_teachers }}</h3>
+        <p class="text-gray-500 text-sm">Total Teachers</p>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md p-6 flex flex-col items-center justify-center">
+        <div class="bg-green-100 text-green-600 rounded-full w-14 h-14 flex items-center justify-center mb-3">
+            <i class="fas fa-vote-yea text-2xl"></i>
+        </div>
+        <h3 class="text-3xl font-bold text-gray-800">{{ total_votes }}</h3>
+        <p class="text-gray-500 text-sm">Votes Cast</p>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md p-6 flex flex-col items-center justify-center">
+        <div class="bg-amber-100 text-amber-600 rounded-full w-14 h-14 flex items-center justify-center mb-3">
+            <i class="fas fa-hourglass-half text-2xl"></i>
+        </div>
+        <h3 class="text-3xl font-bold text-gray-800">{{ votes_remaining }}</h3>
+        <p class="text-gray-500 text-sm">Votes Remaining</p>
+    </div>
+</div>
+
+<!-- Voting Progress -->
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+        <i class="fas fa-chart-pie mr-2 text-primary-DEFAULT"></i>Voting Progress
+    </h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-md font-medium text-gray-700">Student Voting</h3>
+                <span class="text-sm text-gray-500">{{ students_voted }} of {{ total_students }}</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div class="bg-primary-DEFAULT h-2 rounded-full" style="width: {{ student_vote_percent }}%"></div>
+            </div>
+            <div class="text-right text-sm text-gray-500">{{ "%.1f"|format(student_vote_percent) }}% Completed</div>
+        </div>
+
+        <div>
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-md font-medium text-gray-700">Teacher Voting</h3>
+                <span class="text-sm text-gray-500">{{ teachers_voted }} of {{ total_teachers }}</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div class="bg-blue-500 h-2 rounded-full" style="width: {{ teacher_vote_percent }}%"></div>
+            </div>
+            <div class="text-right text-sm text-gray-500">{{ "%.1f"|format(teacher_vote_percent) }}% Completed</div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+        <i class="fas fa-bolt mr-2 text-primary-DEFAULT"></i>Quick Actions
+    </h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <a href="{{ url_for('admin_students') }}" class="bg-green-700 hover:bg-primary-dark text-white rounded-lg p-4 flex flex-col items-center justify-center transition-colors duration-300">
+            <i class="fas fa-user-graduate text-2xl mb-2"></i>
+            <span class="font-medium">Manage Students</span>
+        </a>
+        
+        <a href="{{ url_for('admin_teachers') }}" class="bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-4 flex flex-col items-center justify-center transition-colors duration-300">
+            <i class="fas fa-chalkboard-teacher text-2xl mb-2"></i>
+            <span class="font-medium">Manage Teachers</span>
+        </a>
+        
+        <a href="{{ url_for('admin_candidates') }}" class="bg-purple-500 hover:bg-purple-600 text-white rounded-lg p-4 flex flex-col items-center justify-center transition-colors duration-300">
+            <i class="fas fa-user-tie text-2xl mb-2"></i>
+            <span class="font-medium">Manage Candidates</span>
+        </a>
+        
+        <a href="{{ url_for('admin_results') }}" class="bg-green-500 hover:bg-green-600 text-white rounded-lg p-4 flex flex-col items-center justify-center transition-colors duration-300">
+            <i class="fas fa-chart-bar text-2xl mb-2"></i>
+            <span class="font-medium">View Results</span>
+        </a>
+        
+        <a href="{{ url_for('download_all_students') }}" class="bg-amber-500 hover:bg-amber-600 text-white rounded-lg p-4 flex flex-col items-center justify-center transition-colors duration-300">
+            <i class="fas fa-download text-2xl mb-2"></i>
+            <span class="font-medium">Download Codes</span>
+        </a>
+        
+        <a href="{{ url_for('admin_reset') }}" class="bg-red-500 hover:bg-red-600 text-white rounded-lg p-4 flex flex-col items-center justify-center transition-colors duration-300">
+            <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+            <span class="font-medium">Danger Zone</span>
+        </a>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-md p-6">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold text-gray-800">
+            <i class="fas fa-users mr-2 text-primary-DEFAULT"></i>Recent Students
+        </h2>
+        <a href="{{ url_for('admin_students') }}" class="text-primary-DEFAULT hover:text-primary-dark transition-colors duration-300">
+            View All <i class="fas fa-arrow-right ml-1"></i>
+        </a>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-200">
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="py-2 px-4 border-b text-left">ID</th>
+                    <th class="py-2 px-4 border-b text-left">Name</th>
+                    <th class="py-2 px-4 border-b text-left">Class</th>
+                    <th class="py-2 px-4 border-b text-left">Status</th>
+                    <th class="py-2 px-4 border-b text-left">Code</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students[:10] %}
+                <tr class="{% if student.has_voted %}bg-green-50{% endif %} hover:bg-gray-50">
+                    <td class="py-2 px-4 border-b">{{ student.id }}</td>
+                    <td class="py-2 px-4 border-b">{{ student.name }}</td>
+                    <td class="py-2 px-4 border-b">{{ student.class }}{{ student.section }}</td>
+                    <td class="py-2 px-4 border-b">
+                        {% if student.has_voted %}
+                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">Voted</span>
+                        {% else %}
+                        <span class="bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs font-medium">Not Voted</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-2 px-4 border-b">
+                        <span class="font-mono text-sm">{{ student.voting_code }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="bg-gray-50 pt-3 text-center text-gray-500 text-sm">
+    <p>Developed by <a href="https://dhunganapradip.com.np" target="_blank" class="text-orange-500 hover:text-primary-dark">Pradeep Dhungana</a></p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const countElements = document.querySelectorAll('.text-3xl');
+        
+        countElements.forEach(element => {
+            const finalValue = parseInt(element.textContent, 10);
+            let startValue = 0;
+            const duration = 1500;
+            const step = Math.ceil(finalValue / (duration / 50));
+            
+            const counter = setInterval(function() {
+                startValue += step;
+                if (startValue > finalValue) {
+                    element.textContent = finalValue;
+                    clearInterval(counter);
+                } else {
+                    element.textContent = startValue;
+                }
+            }, 50);
+        });
+    });
+</script>
+{% endblock %} 

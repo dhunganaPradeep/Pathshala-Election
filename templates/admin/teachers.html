@@ -1,0 +1,370 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Teacher Management - School Captain Election{% endblock %}
+
+{% block head %}
+<style>
+    .action-btn {
+        cursor: pointer;
+        margin-right: 8px;
+    }
+    .action-btn:hover {
+        color: var(--primary-color);
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}Teacher Management{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+        <i class="fas fa-user-plus mr-2 text-primary-DEFAULT"></i>Add Teacher
+    </h2>
+    <form id="add-teacher-form" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="teacher-name" class="block text-sm font-medium text-gray-700 mb-1">Teacher Name</label>
+                <input type="text" id="teacher-name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-DEFAULT" required>
+            </div>
+            <div>
+                <label for="teacher-subject" class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                <input type="text" id="teacher-subject" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-DEFAULT">
+            </div>
+        </div>
+        <div>
+            <button type="submit" class="bg-green-700 hover:bg-primary-dark text-white px-6 py-3 rounded-md transition duration-300 flex items-center justify-center text-lg font-medium">
+                <i class="fas fa-plus-circle mr-2"></i> Add Teacher
+            </button>
+        </div>
+        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mt-4">
+            <p class="text-sm text-blue-700">
+                <strong>Note:</strong> Teachers' votes have a weight of 6 points.
+            </p>
+        </div>
+    </form>
+</div>
+
+<!-- Bulk Upload Section -->
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+        <i class="fas fa-file-excel mr-2 text-green-600"></i>Bulk Import Teachers
+    </h2>
+    <form id="upload-teachers-form" enctype="multipart/form-data" class="space-y-4">
+        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+            <p class="text-sm text-blue-700">
+                <strong>Instructions:</strong> Upload an Excel file (.xlsx) with the following columns: <strong>Name</strong> and <strong>Subject</strong>. 
+                This will generate unique voting codes for each teacher.
+            </p>
+        </div>
+        <div class="flex flex-col md:flex-row gap-4 items-start">
+            <div class="flex-grow">
+                <label for="excel-file" class="block text-sm font-medium text-gray-700 mb-1">Excel File</label>
+                <input type="file" id="excel-file" name="file" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-DEFAULT" accept=".xlsx" required>
+            </div>
+            <div class="md:pt-6">
+                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition duration-300 flex items-center text-sm font-medium">
+                    <i class="fas fa-upload mr-2"></i> Upload and Process
+                </button>
+            </div>
+        </div>
+        <div class="mt-2">
+            <a href="{{ url_for('download_all_teachers') }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition duration-300 flex items-center text-sm font-medium" style="width: fit-content;">
+                <i class="fas fa-download mr-2"></i> Download All Teacher Codes
+            </a>
+        </div>
+    </form>
+</div>
+
+<div class="bg-white rounded-lg shadow-md p-6">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold text-gray-800">
+            <i class="fas fa-list-check mr-2 text-primary-DEFAULT"></i>Teacher Voting Codes
+        </h2>
+        <button id="reset-all-codes" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-md text-sm transition duration-300 flex items-center">
+            <i class="fas fa-arrows-rotate mr-1"></i> Reset All Codes
+        </button>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table id="teachers-table" class="min-w-full bg-white border border-gray-200">
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="py-2 px-4 border-b text-left">ID</th>
+                    <th class="py-2 px-4 border-b text-left">Name</th>
+                    <th class="py-2 px-4 border-b text-left">Subject</th>
+                    <th class="py-2 px-4 border-b text-left">Voting Code</th>
+                    <th class="py-2 px-4 border-b text-left">Status</th>
+                    <th class="py-2 px-4 border-b text-left">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for teacher in teachers %}
+                <tr id="teacher-row-{{ teacher.id }}" class="{% if teacher.has_voted %}bg-green-50{% endif %} hover:bg-gray-50">
+                    <td class="py-2 px-4 border-b">{{ teacher.id }}</td>
+                    <td class="py-2 px-4 border-b">{{ teacher.name }}</td>
+                    <td class="py-2 px-4 border-b">{{ teacher.subject or 'N/A' }}</td>
+                    <td class="py-2 px-4 border-b"><span class="voting-code" data-id="{{ teacher.id }}">{{ teacher.voting_code }}</span></td>
+                    <td class="py-2 px-4 border-b">
+                        {% if teacher.has_voted %}
+                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">Voted</span>
+                        {% else %}
+                        <span class="bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs font-medium">Not Voted</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-2 px-4 border-b">
+                        <i class="action-btn fas fa-arrows-rotate text-blue-600 reset-code-btn" data-id="{{ teacher.id }}" title="Reset Code"></i>
+                        {% if not teacher.has_voted %}
+                        <i class="action-btn fas fa-trash-alt text-red-600 delete-teacher-btn" data-id="{{ teacher.id }}" title="Delete Teacher"></i>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Get CSRF token from meta tag
+        const csrfToken = $('meta[name="csrf-token"]').attr('content');
+        
+        // Set up AJAX to always send CSRF token
+        $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                }
+            }
+        });
+        
+        const teachersTable = $('#teachers-table').DataTable({
+            "pageLength": 25,
+            "responsive": true,
+            "order": [[ 0, "asc" ]]
+        });
+        
+        $('#add-teacher-form').on('submit', function(e) {
+            e.preventDefault();
+            
+            const teacherName = $('#teacher-name').val().trim();
+            const teacherSubject = $('#teacher-subject').val().trim();
+            
+            if (!teacherName) {
+                window.showToast('Teacher name is required', 'error');
+                return;
+            }
+            
+            const toastId = window.showToast('Adding new teacher...', 'info', 0);
+            
+            $.ajax({
+                url: '{{ url_for("add_teacher") }}',
+                type: 'POST',
+                data: {
+                    name: teacherName,
+                    subject: teacherSubject,
+                    csrf_token: csrfToken
+                },
+                success: function(response) {
+                    $(toastId).remove();
+                    
+                    if (response.success) {
+                        const teacher = response.teacher;
+                        
+                        const newRow = teachersTable.row.add([
+                            teacher.id,
+                            teacher.name,
+                            teacher.subject || 'N/A',
+                            teacher.voting_code,
+                            '<span class="bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs font-medium">Not Voted</span>',
+                            '<i class="action-btn fas fa-arrows-rotate text-blue-600 reset-code-btn" data-id="' + teacher.id + '" title="Reset Code"></i> <i class="action-btn fas fa-trash-alt text-red-600 delete-teacher-btn" data-id="' + teacher.id + '" title="Delete Teacher"></i>'
+                        ]).draw().node();
+                        
+                        $(newRow).attr('id', 'teacher-row-' + teacher.id);
+                        
+                        $(newRow).find('.voting-code').attr('data-id', teacher.id);
+                        
+                        $('#teacher-name').val('');
+                        $('#teacher-subject').val('');
+                        
+                        window.showToast(response.message || 'Teacher added successfully!', 'success');
+                    } else {
+                        window.showToast('Error: ' + response.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    $(toastId).remove();
+                    
+                    window.showToast('Error adding teacher: ' + error, 'error');
+                }
+            });
+        });
+        
+        // Handle Excel Upload
+        $('#upload-teachers-form').on('submit', function(e) {
+            e.preventDefault();
+            
+            const fileInput = $('#excel-file')[0];
+            if (!fileInput.files || fileInput.files.length === 0) {
+                window.showToast('Please select an Excel file', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            if (!file.name.toLowerCase().endsWith('.xlsx')) {
+                window.showToast('File must be an Excel file (.xlsx)', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('csrf_token', csrfToken);
+            
+            const toastId = window.showToast('Uploading and processing teachers...', 'info', 0);
+            
+            $.ajax({
+                url: '{{ url_for("upload_teachers") }}',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    $(toastId).remove();
+                    // Automatic download will start
+                    window.showToast('Teachers processed successfully! PDF will download automatically.', 'success');
+                    
+                    // Refresh the page to show updated teacher list
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 2000);
+                },
+                error: function(xhr, status, error) {
+                    $(toastId).remove();
+                    
+                    let errorMsg = 'Error processing Excel file';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    }
+                    
+                    window.showToast('Error: ' + errorMsg, 'error');
+                }
+            });
+        });
+        
+        $(document).on('click', '.reset-code-btn', function() {
+            const teacherId = $(this).data('id');
+            const codeSpan = $(`span.voting-code[data-id="${teacherId}"]`);
+            
+            if (confirm('Are you sure you want to reset this teacher\'s voting code?')) {
+                const toastId = window.showToast('Resetting code...', 'info', 0);
+                
+                $.ajax({
+                    url: `/admin/teacher/reset/${teacherId}`,
+                    type: 'POST',
+                    data: {
+                        csrf_token: csrfToken
+                    },
+                    success: function(response) {
+                        $(toastId).remove();
+                        
+                        if (response.success) {
+                            codeSpan.fadeOut(200, function() {
+                                $(this).text(response.new_code).fadeIn(200);
+                                $(this).addClass('text-green-600 font-bold');
+                                setTimeout(() => {
+                                    $(this).removeClass('text-green-600 font-bold');
+                                }, 2000);
+                            });
+                            window.showToast(response.message || 'Code reset successfully!', 'success');
+                        } else {
+                            window.showToast('Error: ' + (response.message || 'Failed to reset code'), 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        $(toastId).remove();
+                        window.showToast('Error resetting code: ' + error, 'error');
+                    }
+                });
+            }
+        });
+        
+        $(document).on('click', '.delete-teacher-btn', function() {
+            const teacherId = $(this).data('id');
+            
+            if (confirm('Are you sure you want to delete this teacher?')) {
+                const toastId = window.showToast('Deleting teacher...', 'info', 0);
+                
+                $.ajax({
+                    url: `/admin/teacher/delete/${teacherId}`,
+                    type: 'POST',
+                    data: {
+                        csrf_token: csrfToken
+                    },
+                    success: function(response) {
+                        $(toastId).remove();
+                        
+                        if (response.success) {
+                            const row = $(`#teacher-row-${teacherId}`);
+                            row.fadeOut(400, function() {
+                                teachersTable.row(row).remove().draw();
+                                window.showToast(response.message || 'Teacher deleted successfully!', 'success');
+                            });
+                        } else {
+                            window.showToast('Error: ' + (response.message || 'Failed to delete teacher'), 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        $(toastId).remove();
+                        window.showToast('Error deleting teacher: ' + error, 'error');
+                    }
+                });
+            }
+        });
+        
+        $('#reset-all-codes').on('click', function() {
+            if (confirm('Are you sure you want to reset ALL teacher voting codes?')) {
+                const toastId = window.showToast('Resetting all teacher codes...', 'info', 0);
+                
+                $.ajax({
+                    url: '{{ url_for("reset_all_teacher_codes") }}',
+                    type: 'POST',
+                    data: {
+                        csrf_token: csrfToken
+                    },
+                    success: function(response) {
+                        $(toastId).remove();
+                        
+                        if (response.success) {
+                            response.updated_teachers.forEach(teacher => {
+                                const codeSpan = $(`span.voting-code[data-id="${teacher.id}"]`);
+                                if (codeSpan.length) {
+                                    codeSpan.fadeOut(200, function() {
+                                        $(this).text(teacher.new_code).fadeIn(200);
+                                        $(this).addClass('text-green-600 font-bold');
+                                        setTimeout(() => {
+                                            $(this).removeClass('text-green-600 font-bold');
+                                        }, 2000);
+                                    });
+                                }
+                            });
+                            
+                            window.showToast(response.message || `Successfully reset ${response.updated_teachers.length} teacher codes!`, 'success');
+                        } else {
+                            window.showToast('Error: ' + (response.message || 'Failed to reset codes'), 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        $(toastId).remove();
+                        
+                        console.error('Reset Error:', status, error);
+                        window.showToast('Error resetting codes: ' + error, 'error');
+                    }
+                });
+            }
+        });
+    });
+</script>
+{% endblock %} 

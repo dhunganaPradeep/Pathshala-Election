@@ -1,0 +1,228 @@
+{% extends "layout.html" %}
+
+{% block title %}Admin Login - School Captain Election{% endblock %}
+
+{% block head %}
+<!-- Directly include Tailwind for this page -->
+<script src="https://cdn.tailwindcss.com?v=3.3.5"></script>
+<script>
+    if (typeof tailwind !== 'undefined') {
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            light: '#4ade80',
+                            DEFAULT: '#16a34a',
+                            dark: '#166534',
+                        },
+                        secondary: {
+                            light: '#fb923c',
+                            DEFAULT: '#f97316',
+                            dark: '#c2410c',
+                        },
+                    },
+                },
+            },
+        }
+    }
+</script>
+
+<!-- Add link to custom CSS file -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+<style>
+    .admin-login-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, rgba(22, 163, 74, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 0;
+    }
+    
+    /* Fallback styles in case Tailwind fails to load */
+    .fallback-styles {
+        --white: #ffffff;
+        --black: #000000;
+        --primary-color: #16a34a;
+        --primary-dark: #166534;
+        --secondary-color: #f97316;
+    }
+    
+    .bg-white { background-color: var(--white); }
+    .text-white { color: var(--white); }
+    .text-black { color: var(--black); }
+    .rounded-lg { border-radius: 0.5rem; }
+    .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+    .font-bold { font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block full_width_content %}
+<div class="admin-login-container">
+    <div class="max-w-md w-full bg-white rounded-lg shadow-lg overflow-hidden animate-fadeInUp">
+        <div class="bg-gradient-to-r from-primary-DEFAULT to-secondary-DEFAULT p-6 text-center text-white">
+            <div class="flex justify-center mb-3">
+                <img src="/static/img/logos/logo.png" alt="School Logo" class="h-20 mx-auto floating">
+            </div>
+            <h2 class="text-black text-2xl font-bold">Admin Login</h2>
+            <p class="text-black text-opacity-90 mt-1">School Captain Election</p>
+        </div>
+        
+        <div class="p-6">
+            <div id="error-message" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 animate-shake"></div>
+            
+            <form id="admin-login-form" class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-user text-gray-400"></i>
+                        </div>
+                        <input type="text" id="username" name="username" class="w-full pl-10 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-DEFAULT text-gray-800" placeholder="Enter admin username" required>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-gray-400"></i>
+                        </div>
+                        <input type="password" id="password" name="password" class="w-full pl-10 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-DEFAULT text-gray-800" placeholder="Enter password" required>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer" id="toggle-password">
+                            <i class="fas fa-eye text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="remember" name="remember" class="h-4 w-4 text-primary-DEFAULT focus:ring-primary-light border-gray-300 rounded">
+                        <label for="remember" class="ml-2 block text-sm text-gray-700">Remember me</label>
+                    </div>
+                </div>
+                
+                <div>
+                    <button type="submit" class="w-full h-12 bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center justify-center shadow-md hover:shadow-lg">
+                        <i class="fas fa-sign-in-alt mr-2"></i>
+                        Login
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Emergency reset link removed for security -->
+        </div>
+        
+        <div class="bg-gray-50 p-4 text-center text-gray-500 text-sm border-t">
+            <p>Admin access only. Unauthorized access is prohibited.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('admin-login-form');
+        const errorMessage = document.getElementById('error-message');
+        const togglePassword = document.getElementById('toggle-password');
+        const passwordInput = document.getElementById('password');
+        
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            const eyeIcon = togglePassword.querySelector('i');
+            eyeIcon.classList.toggle('fa-eye');
+            eyeIcon.classList.toggle('fa-eye-slash');
+        });
+        
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = passwordInput.value;
+            const remember = document.getElementById('remember').checked;
+            
+            if (!username || !password) {
+                showError('Please enter both username and password');
+                return;
+            }
+            
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Logging in...';
+            
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+            formData.append('remember', remember);
+            
+            // Find and add CSRF token if present
+            const csrfElement = document.querySelector('meta[name="csrf-token"]');
+            if (csrfElement) {
+                formData.append('csrf_token', csrfElement.getAttribute('content'));
+            }
+            
+            fetch('/admin/login', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.redirected) {
+                    const loginCard = document.querySelector('.animate-fadeInUp');
+                    loginCard.classList.add('transform', 'translate-y-[-100vh]', 'opacity-0');
+                    loginCard.style.transition = 'transform 0.8s ease, opacity 0.8s ease';
+                    
+                    setTimeout(() => {
+                        window.location.href = response.url;
+                    }, 800);
+                    return null; // Skip the next then block
+                } 
+                return response.text();
+            })
+            .then(text => {
+                if (text) { // Only run this for non-redirect responses
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                    
+                    try {
+                        const data = JSON.parse(text);
+                        showError(data.message || 'Invalid username or password');
+                    } catch (e) {
+                        // Check for error messages in the HTML
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = text;
+                        const flashMessage = tempDiv.querySelector('.alert-error') || tempDiv.querySelector('.alert-danger');
+                        if (flashMessage) {
+                            showError(flashMessage.textContent.trim());
+                        } else {
+                            showError('Invalid username or password');
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+                
+                showError('Something went wrong. Please try again.');
+                console.error('Error:', error);
+            });
+        });
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+            const loginCard = document.querySelector('.animate-fadeInUp');
+            loginCard.classList.add('animate-shake');
+            
+            setTimeout(() => {
+                loginCard.classList.remove('animate-shake');
+            }, 1000);
+        }
+    });
+</script>
+{% endblock %} 

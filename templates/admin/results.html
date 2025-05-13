@@ -1,0 +1,719 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Election Results - School Captain Election{% endblock %}
+
+{% block head %}
+<!-- Chart.js from cdnjs (approved domain) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+{% endblock %}
+
+{% block page_title %}Election Results{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="bg-primary-DEFAULT text-white p-4">
+                <h2 class="text-xl font-bold flex items-center">
+                    <i class="fas fa-trophy text-yellow-300 mr-2"></i> Male Captain Winner
+                </h2>
+            </div>
+            
+            <div class="p-6">
+                {% if male_winner and male_winner.votes > 0 %}
+                <div class="flex flex-col items-center">
+                    <div class="relative mb-4">
+                        {% if male_winner.logo_path %}
+                        <div class="w-32 h-32 bg-gray-100 rounded-full border-4 border-yellow-400 flex items-center justify-center shadow-lg">
+                            <img src="/{{ male_winner.logo_path }}" alt="{{ male_winner.name }}" class="w-20 h-20 object-contain">
+                        </div>
+                        {% else %}
+                        <div class="w-32 h-32 bg-gray-200 rounded-full border-4 border-yellow-400 flex items-center justify-center">
+                            <i class="fas fa-user-tie text-5xl text-gray-400"></i>
+                        </div>
+                        {% endif %}
+                        <div class="absolute -top-2 -right-2 bg-yellow-400 text-yellow-900 rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold shadow-md">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-2xl font-bold text-gray-800 mb-1">{{ male_winner.name }}</h3>
+                    <div class="flex flex-col items-center gap-1 mb-3">
+                        <div class="flex items-center">
+                            <span class="text-yellow-500 mr-1"><i class="fas fa-star"></i></span>
+                            <span class="font-semibold text-gray-600">{{ male_winner.votes }} votes</span>
+                            <span class="mx-2 text-gray-400">|</span>
+                            <span class="text-blue-500">{{ (male_winner.votes / total_votes * 100)|round(1) if total_votes > 0 else 0 }}% of total votes</span>
+                        </div>
+                        <div class="flex items-center font-semibold text-purple-700">
+                            <i class="fas fa-award mr-1"></i> {{ male_winner.points }} points
+                            <span class="text-xs text-gray-500 ml-1">(teacher votes = 6 points)</span>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-info-circle text-4xl text-gray-300 mb-3"></i>
+                    <p class="text-gray-500">No male winner determined yet. Voting is still in progress.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Female Winner -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="bg-secondary-DEFAULT text-white p-4">
+                <h2 class="text-xl font-bold flex items-center">
+                    <i class="fas fa-trophy text-yellow-300 mr-2"></i> Female Captain Winner
+                </h2>
+            </div>
+            
+            <div class="p-6">
+                {% if female_winner and female_winner.votes > 0 %}
+                <div class="flex flex-col items-center">
+                    <div class="relative mb-4">
+                        {% if female_winner.logo_path %}
+                        <div class="w-32 h-32 bg-gray-100 rounded-full border-4 border-yellow-400 flex items-center justify-center shadow-lg">
+                            <img src="/{{ female_winner.logo_path }}" alt="{{ female_winner.name }}" class="w-20 h-20 object-contain">
+                        </div>
+                        {% else %}
+                        <div class="w-32 h-32 bg-gray-200 rounded-full border-4 border-yellow-400 flex items-center justify-center">
+                            <i class="fas fa-user-tie text-5xl text-gray-400"></i>
+                        </div>
+                        {% endif %}
+                        <div class="absolute -top-2 -right-2 bg-yellow-400 text-yellow-900 rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold shadow-md">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-2xl font-bold text-gray-800 mb-1">{{ female_winner.name }}</h3>
+                    <div class="flex flex-col items-center gap-1 mb-3">
+                        <div class="flex items-center">
+                            <span class="text-yellow-500 mr-1"><i class="fas fa-star"></i></span>
+                            <span class="font-semibold text-gray-600">{{ female_winner.votes }} votes</span>
+                            <span class="mx-2 text-gray-400">|</span>
+                            <span class="text-blue-500">{{ (female_winner.votes / total_votes * 100)|round(1) if total_votes > 0 else 0 }}% of total votes</span>
+                        </div>
+                        <div class="flex items-center font-semibold text-purple-700">
+                            <i class="fas fa-award mr-1"></i> {{ female_winner.points }} points
+                            <span class="text-xs text-gray-500 ml-1">(teacher votes = 6 points)</span>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-info-circle text-4xl text-gray-300 mb-3"></i>
+                    <p class="text-gray-500">No female winner determined yet. Voting is still in progress.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-semibold text-gray-800">Total Votes Cast</h3>
+            <div class="bg-green-100 text-primary-DEFAULT p-2 rounded-full">
+                <i class="fas fa-vote-yea text-lg"></i>
+            </div>
+        </div>
+        <p class="text-3xl font-bold text-gray-800">{{ total_votes }}</p>
+        <div class="flex justify-between items-center mt-2">
+            <div class="text-sm text-gray-500">
+                <span class="text-primary-DEFAULT font-medium">{{ percentage_voted|round|int }}%</span> participation
+            </div>
+            <div class="text-sm text-gray-500">
+                {{ remaining_voters }} remaining
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-semibold text-gray-800">Total Points</h3>
+            <div class="bg-purple-100 text-purple-600 p-2 rounded-full">
+                <i class="fas fa-award text-lg"></i>
+            </div>
+        </div>
+        <p class="text-3xl font-bold text-gray-800">{{ total_points }}</p>
+        <div class="flex items-center mt-2">
+            <div class="text-sm text-gray-500">
+                <span class="text-purple-600 font-medium">Teachers:</span> {{ teachers_voted * 6 }} points
+            </div>
+            <span class="mx-2 text-gray-400">|</span>
+            <div class="text-sm text-gray-500">
+                <span class="text-blue-600 font-medium">Students:</span> {{ students_voted }} points
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-semibold text-gray-800">Student Votes</h3>
+            <div class="bg-blue-100 text-blue-600 p-2 rounded-full">
+                <i class="fas fa-user-graduate text-lg"></i>
+            </div>
+        </div>
+        <p class="text-3xl font-bold text-gray-800">{{ students_voted }}</p>
+        <div class="flex justify-between items-center mt-2">
+            <div class="text-sm text-gray-500">
+                <span class="text-blue-600 font-medium">{{ student_vote_percent|round|int }}%</span> of students
+            </div>
+            <div class="text-sm text-gray-500">
+                {{ total_students - students_voted }} remaining
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-semibold text-gray-800">Teacher Votes</h3>
+            <div class="bg-purple-100 text-purple-600 p-2 rounded-full">
+                <i class="fas fa-chalkboard-teacher text-lg"></i>
+            </div>
+        </div>
+        <p class="text-3xl font-bold text-gray-800">{{ teachers_voted }}</p>
+        <div class="flex justify-between items-center mt-2">
+            <div class="text-sm text-gray-500">
+                <span class="text-purple-600 font-medium">{{ teacher_vote_percent|round|int }}%</span> of teachers
+            </div>
+            <div class="text-sm text-gray-500">
+                {{ total_teachers - teachers_voted }} remaining
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <div class="flex justify-between items-center">
+        <h2 class="text-xl font-semibold text-gray-800">
+            <i class="fas fa-chart-bar mr-2 text-primary-DEFAULT"></i>Results Dashboard
+        </h2>
+        <div class="flex space-x-3">
+            <button id="refresh-results" class="px-4 py-2 bg-green-700 hover:bg-primary-dark text-white rounded-md flex items-center justify-center transition-colors duration-300">
+                <i class="fas fa-sync-alt mr-2 animate-spin"></i> Refresh Results
+            </button>
+            <button id="toggle-details" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md flex items-center justify-center transition-colors duration-300">
+                <i class="fas fa-chart-pie mr-2"></i> Toggle Charts
+            </button>
+            <a href="{{ url_for('export_results') }}" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md flex items-center justify-center transition-colors duration-300">
+                <i class="fas fa-file-export mr-2"></i> Export Results
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Voter Search Section -->
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+        <i class="fas fa-search mr-2 text-primary-DEFAULT"></i>Search Voter
+    </h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+            <form id="search-voter-form" class="space-y-4">
+                <div>
+                    <label for="voter-name" class="block text-sm font-medium text-gray-700 mb-1">Voter Name, ID or Code</label>
+                    <input type="text" id="voter-name" name="query" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-DEFAULT" placeholder="Search by name, ID or voting code">
+                </div>
+                
+                <button type="submit" class="w-full bg-green-700 hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-300 flex items-center justify-center">
+                    <i class="fas fa-search mr-2"></i>Search
+                </button>
+            </form>
+        </div>
+        
+        <div id="search-results" class="bg-gray-50 rounded-md p-4 min-h-[200px] overflow-auto">
+            <div class="text-center text-gray-500">
+                <i class="fas fa-search text-4xl mb-3"></i>
+                <p>Search for a voter to see their voting status</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+        <i class="fas fa-male mr-2 text-primary-DEFAULT"></i>Male Candidates Results
+    </h2>
+    
+    {% if male_results %}
+    <div class="mb-6">
+        <div class="h-60">
+            <canvas id="maleResultsChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="space-y-4">
+        {% for candidate in male_results %}
+        <div class="bg-gray-50 rounded-lg p-4 relative transform transition-transform duration-300 hover:translate-x-2 hover:shadow-md
+                    {% if loop.index == 1 %}border-l-4 border-yellow-400{% elif loop.index == 2 %}border-l-4 border-gray-400{% elif loop.index == 3 %}border-l-4 border-amber-600{% else %}border-l-4 border-gray-200{% endif %}">
+            
+            {% if loop.index <= 3 %}
+            <div class="absolute -top-3 -left-3 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
+                        {% if loop.index == 1 %}bg-yellow-400 text-yellow-900{% elif loop.index == 2 %}bg-gray-400 text-gray-900{% elif loop.index == 3 %}bg-amber-600 text-white{% endif %}">
+                {{ loop.index }}
+            </div>
+            {% endif %}
+            
+            <div class="flex flex-col md:flex-row items-center md:items-start">
+                <div class="flex-shrink-0 mb-3 md:mb-0 md:mr-4">
+                    {% if candidate.logo_path %}
+                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center border-2 border-white shadow">
+                        <img src="/{{ candidate.logo_path }}" alt="{{ candidate.name }}" class="w-12 h-12 object-contain">
+                    </div>
+                    {% else %}
+                    <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-gray-400 text-2xl"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="flex-grow text-center md:text-left">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            {{ candidate.name }}
+                        </h3>
+                        <div class="md:text-right">
+                            <span class="text-2xl font-bold {% if loop.index == 1 %}text-yellow-600{% elif loop.index == 2 %}text-gray-600{% elif loop.index == 3 %}text-amber-700{% else %}text-gray-700{% endif %}">
+                                {{ candidate.votes }}
+                            </span>
+                            <span class="text-gray-500 text-sm">votes</span>
+                            <div class="text-purple-700 font-semibold">
+                                {{ candidate.points }} points
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                        <div class="bg-gradient-to-r from-primary-light to-primary-DEFAULT h-2.5 rounded-full" style="width: {{ (candidate.votes / male_results[0].votes * 100) if male_results[0].votes > 0 else 0 }}%"></div>
+                    </div>
+                    
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">{{ (candidate.votes / total_votes * 100)|round(1) if total_votes > 0 else 0 }}% of total votes</span>
+                        <span class="text-gray-500">{{ (candidate.votes / male_results[0].votes * 100)|round(1) if male_results[0].votes > 0 else 0 }}% of winner</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-gray-100 rounded-xl p-10 text-center text-gray-500">
+        <i class="fas fa-chart-pie text-4xl mb-3"></i>
+        <p>No votes have been cast for male candidates yet.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+        <i class="fas fa-female mr-2 text-secondary-DEFAULT"></i>Female Candidates Results
+    </h2>
+    
+    {% if female_results %}
+    <div class="mb-6">
+        <div class="h-60">
+            <canvas id="femaleResultsChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="space-y-4">
+        {% for candidate in female_results %}
+        <div class="bg-gray-50 rounded-lg p-4 relative transform transition-transform duration-300 hover:translate-x-2 hover:shadow-md
+                    {% if loop.index == 1 %}border-l-4 border-yellow-400{% elif loop.index == 2 %}border-l-4 border-gray-400{% elif loop.index == 3 %}border-l-4 border-amber-600{% else %}border-l-4 border-gray-200{% endif %}">
+            
+            {% if loop.index <= 3 %}
+            <div class="absolute -top-3 -left-3 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
+                        {% if loop.index == 1 %}bg-yellow-400 text-yellow-900{% elif loop.index == 2 %}bg-gray-400 text-gray-900{% elif loop.index == 3 %}bg-amber-600 text-white{% endif %}">
+                {{ loop.index }}
+            </div>
+            {% endif %}
+            
+            <div class="flex flex-col md:flex-row items-center md:items-start">
+                <div class="flex-shrink-0 mb-3 md:mb-0 md:mr-4">
+                    {% if candidate.logo_path %}
+                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center border-2 border-white shadow">
+                        <img src="/{{ candidate.logo_path }}" alt="{{ candidate.name }}" class="w-12 h-12 object-contain">
+                    </div>
+                    {% else %}
+                    <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-gray-400 text-2xl"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="flex-grow text-center md:text-left">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            {{ candidate.name }}
+                        </h3>
+                        <div class="md:text-right">
+                            <span class="text-2xl font-bold {% if loop.index == 1 %}text-yellow-600{% elif loop.index == 2 %}text-gray-600{% elif loop.index == 3 %}text-amber-700{% else %}text-gray-700{% endif %}">
+                                {{ candidate.votes }}
+                            </span>
+                            <span class="text-gray-500 text-sm">votes</span>
+                            <div class="text-purple-700 font-semibold">
+                                {{ candidate.points }} points
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                        <div class="bg-gradient-to-r from-secondary-light to-secondary-DEFAULT h-2.5 rounded-full" style="width: {{ (candidate.votes / female_results[0].votes * 100) if female_results[0].votes > 0 else 0 }}%"></div>
+                    </div>
+                    
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">{{ (candidate.votes / total_votes * 100)|round(1) if total_votes > 0 else 0 }}% of total votes</span>
+                        <span class="text-gray-500">{{ (candidate.votes / female_results[0].votes * 100)|round(1) if female_results[0].votes > 0 else 0 }}% of winner</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-gray-100 rounded-xl p-10 text-center text-gray-500">
+        <i class="fas fa-chart-pie text-4xl mb-3"></i>
+        <p>No votes have been cast for female candidates yet.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="bg-white rounded-lg shadow-md p-6">
+    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+        <i class="fas fa-school mr-2 text-primary-DEFAULT"></i>Class-wise Voting Statistics
+    </h2>
+    
+    <div class="h-80">
+        <canvas id="classVotingChart"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        const csrfToken = $('meta[name="csrf-token"]').attr('content');
+        
+        // Simple error handling to check if Chart.js is loaded
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js is not loaded!');
+            return;
+        }
+        
+        // Male Results Chart
+        {% if male_results %}
+        try {
+            const maleCtx = document.getElementById('maleResultsChart').getContext('2d');
+            const maleChart = new Chart(maleCtx, {
+                type: 'bar',
+                data: {
+                    labels: [{% for candidate in male_results %} "{{ candidate.name }}", {% endfor %}],
+                    datasets: [
+                        {
+                            label: 'Votes',
+                            data: [{% for candidate in male_results %} {{ candidate.votes }}, {% endfor %}],
+                            backgroundColor: 'rgba(22, 163, 74, 0.7)',
+                            borderColor: 'rgba(22, 163, 74, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Points (teacher votes = 6)',
+                            data: [{% for candidate in male_results %} {{ candidate.points }}, {% endfor %}],
+                            backgroundColor: 'rgba(168, 85, 247, 0.7)',
+                            borderColor: 'rgba(168, 85, 247, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Male Candidates Vote Distribution',
+                            font: {
+                                size: 16
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Votes'
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (e) {
+            console.error('Error creating male chart:', e);
+        }
+        {% endif %}
+        
+        // Female Results Chart
+        {% if female_results %}
+        try {
+            const femaleCtx = document.getElementById('femaleResultsChart').getContext('2d');
+            const femaleChart = new Chart(femaleCtx, {
+                type: 'bar',
+                data: {
+                    labels: [{% for candidate in female_results %} "{{ candidate.name }}", {% endfor %}],
+                    datasets: [
+                        {
+                            label: 'Votes',
+                            data: [{% for candidate in female_results %} {{ candidate.votes }}, {% endfor %}],
+                            backgroundColor: 'rgba(249, 115, 22, 0.7)',
+                            borderColor: 'rgba(249, 115, 22, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Points (teacher votes = 6)',
+                            data: [{% for candidate in female_results %} {{ candidate.points }}, {% endfor %}],
+                            backgroundColor: 'rgba(168, 85, 247, 0.7)',
+                            borderColor: 'rgba(168, 85, 247, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Female Candidates Vote Distribution',
+                            font: {
+                                size: 16
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Votes'
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (e) {
+            console.error('Error creating female chart:', e);
+        }
+        {% endif %}
+        
+        // Class Voting Chart
+        try {
+            const classCtx = document.getElementById('classVotingChart').getContext('2d');
+            const classChart = new Chart(classCtx, {
+                type: 'bar',
+                data: {
+                    labels: {{ class_labels|tojson }},
+                    datasets: [{
+                        label: 'Voting Percentage',
+                        data: {{ class_percentages|tojson }},
+                        backgroundColor: 'rgba(22, 163, 74, 0.7)',
+                        borderColor: 'rgba(22, 163, 74, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Class-wise Voting Participation',
+                            font: {
+                                size: 16
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Percentage of Students Voted'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (e) {
+            console.error('Error creating class chart:', e);
+        }
+        
+        // Refresh results button
+        $('#refresh-results').on('click', function() {
+            const btn = $(this);
+            btn.prop('disabled', true);
+            btn.html('<i class="fas fa-sync-alt mr-2 animate-spin"></i> Refreshing...');
+            
+            $.ajax({
+                url: '{{ url_for("refresh_results") }}',
+                type: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        window.showToast('Results refreshed successfully!', 'success');
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 1000);
+                    } else {
+                        window.showToast('Error: ' + response.message, 'error');
+                        btn.prop('disabled', false);
+                        btn.html('<i class="fas fa-sync-alt mr-2"></i> Refresh Results');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    window.showToast('Error refreshing results', 'error');
+                    btn.prop('disabled', false);
+                    btn.html('<i class="fas fa-sync-alt mr-2"></i> Refresh Results');
+                }
+            });
+        });
+        
+        // Toggle charts
+        $('#toggle-details').on('click', function() {
+            const chartElements = $('canvas');
+            const toggleBtn = $(this);
+            
+            chartElements.each(function() {
+                const parent = $(this).parent();
+                if (parent.css('display') === 'none') {
+                    parent.show();
+                    toggleBtn.html('<i class="fas fa-chart-pie mr-2"></i> Hide Charts');
+                } else {
+                    parent.hide();
+                    toggleBtn.html('<i class="fas fa-chart-pie mr-2"></i> Show Charts');
+                }
+            });
+        });
+        
+        // Search Voter
+        $('#search-voter-form').on('submit', function(e) {
+            e.preventDefault();
+            
+            const query = $('#voter-name').val().trim();
+            if (!query) {
+                window.showToast('Please enter a search query', 'error');
+                return;
+            }
+            
+            const loadingToast = window.showToast('Searching for voter...', 'info', 0);
+            
+            $.ajax({
+                url: '/admin/search_voter',
+                type: 'POST',
+                data: {
+                    query: query,
+                    csrf_token: csrfToken
+                },
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                success: function(response) {
+                    $(loadingToast).remove();
+                    
+                    if (response.success) {
+                        const voters = response.voters;
+                        
+                        if (voters.length > 0) {
+                            let html = '<div class="overflow-x-auto mt-4">';
+                            html += '<table class="min-w-full bg-white border border-gray-200">';
+                            html += '<thead><tr class="bg-gray-50">';
+                            html += '<th class="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>';
+                            html += '<th class="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>';
+                            html += '<th class="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>';
+                            html += '<th class="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>';
+                            html += '<th class="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>';
+                            html += '</tr></thead>';
+                            html += '<tbody>';
+                            
+                            for (const voter of voters) {
+                                html += '<tr class="border-b hover:bg-gray-50">';
+                                html += '<td class="py-2 px-3 text-sm">' + voter.id + '</td>';
+                                html += '<td class="py-2 px-3 text-sm">' + voter.name + '</td>';
+                                html += '<td class="py-2 px-3 text-sm">' + (voter.is_teacher ? 'Teacher' : 'Student') + '</td>';
+                                html += '<td class="py-2 px-3 text-sm">' + (voter.has_voted ? '<span class="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs">Voted</span>' : '<span class="bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full text-xs">Not Voted</span>') + '</td>';
+                                html += '<td class="py-2 px-3 text-sm">' + (voter.has_voted ? '<button class="revoke-btn bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded-md text-xs" data-id="' + voter.id + '">Revoke Vote</button>' : 'N/A') + '</td>';
+                                html += '</tr>';
+                            }
+                            
+                            html += '</tbody></table></div>';
+                            
+                            $('#search-results').html(html);
+                            
+                            $('.revoke-btn').on('click', function() {
+                                const voterId = $(this).data('id');
+                                
+                                if (confirm('Are you sure you want to revoke the vote for voter ID ' + voterId + '? This action cannot be undone.')) {
+                                    const revokeToast = window.showToast('Revoking vote...', 'info', 0);
+                                    
+                                    $.ajax({
+                                        url: '/admin/revoke_vote',
+                                        type: 'POST',
+                                        data: {
+                                            voter_id: voterId,
+                                            csrf_token: csrfToken
+                                        },
+                                        success: function(response) {
+                                            $(revokeToast).remove();
+                                            
+                                            if (response.success) {
+                                                window.showToast('Vote revoked successfully!', 'success');
+                                                setTimeout(function() {
+                                                    window.location.reload();
+                                                }, 1500);
+                                            } else {
+                                                window.showToast('Error: ' + response.message, 'error');
+                                            }
+                                        },
+                                        error: function(xhr, status, error) {
+                                            $(revokeToast).remove();
+                                            window.showToast('Error revoking vote: ' + error, 'error');
+                                        }
+                                    });
+                                }
+                            });
+                        } else {
+                            $('#search-results').html('<div class="mt-4 text-center text-gray-500">No voters found matching your search criteria.</div>');
+                        }
+                    } else {
+                        window.showToast('Error: ' + response.message, 'error');
+                        $('#search-results').html('<div class="mt-4 text-center text-gray-500">No voters found matching your search criteria.</div>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    $(loadingToast).remove();
+                    window.showToast('Error searching for voters: ' + error, 'error');
+                    $('#search-results').html('<div class="mt-4 text-center text-gray-500">Search failed. Please try again.</div>');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %} 
