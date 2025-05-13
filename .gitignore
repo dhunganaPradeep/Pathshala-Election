@@ -147,6 +147,7 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+flask_session/
 
 # Pyre type checker
 .pyre/
