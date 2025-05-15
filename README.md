@@ -1,6 +1,4 @@
-<div align="center">
 # Pathshala Election System
-</div>
 
 <div align="center">
     <img src="static/img/logos/logo.png" alt="Pathshala Logo" width="150">
