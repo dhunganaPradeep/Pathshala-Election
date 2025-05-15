@@ -128,6 +128,8 @@ celerybeat.pid
 # Environments
 .venv
 env/
+election.db
+election copy 2.db
 venv/
 ENV/
 env.bak/

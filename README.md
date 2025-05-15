@@ -16,6 +16,7 @@ School captain election system designed for election in [Pathshala Nepal Foundat
 - **Gender-balanced Elections**: Support for electing both male and female candidates
 - **Vote Management**: Administrators can revoke votes or reset the election if needed
 - **Results Analysis**: View detailed voting statistics with class-wise breakdowns
+- **Concurrent Voting**: Supports large numbers of students voting simultaneously
 
 ## Tech Stack
 
@@ -97,6 +98,31 @@ For production deployment, we recommend:
 1. Enter the provided voting code
 2. Select one male and one female candidate
 3. Submit your vote
+
+## Testing
+
+### Concurrent Voting Tests
+
+The system includes comprehensive tests to verify that multiple students can vote simultaneously without conflicts:
+
+1. **Basic Test**: Run all tests with default settings (10 concurrent voters)
+   ```bash
+   python run_tests.py
+   ```
+
+2. **Full-Scale Test**: Test with all students voting simultaneously
+   ```bash
+   python run_tests.py --test test_multiple_concurrent_voters --voters 180
+   ```
+
+3. **What the Tests Verify**:
+   - Voting codes are correctly validated
+   - Multiple students can vote concurrently without race conditions
+   - Votes are correctly recorded in the database
+   - Students cannot vote more than once
+   - System performance under high load
+
+For more details on testing, see the [TEST_README.md](TEST_README.md) file.
 
 ## Screenshots
 

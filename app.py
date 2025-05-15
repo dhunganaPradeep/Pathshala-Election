@@ -19,7 +19,6 @@ import re
 
 app = Flask(__name__)
 
-# Use a strong random secret key - in production, set this via environment variable
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'xlsx'}
@@ -27,32 +26,27 @@ app.config['DATABASE'] = os.environ.get('DATABASE_PATH', 'election.db')
 app.config['ADMIN_TIMEOUT'] = int(os.environ.get('ADMIN_TIMEOUT', 1800))
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
 
-# Session security settings
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.environ.get('SESSION_FILE_DIR', 'flask_session')
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
-app.config['SESSION_COOKIE_SECURE'] = True  # Ensure cookies only sent over HTTPS
-app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript from accessing cookies
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Protect against CSRF attacks
+app.config['SESSION_COOKIE_SECURE'] = True  
+app.config['SESSION_COOKIE_HTTPONLY'] = True  
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax' 
 
-# Configure logging with minimal output
 log_level = os.environ.get('LOG_LEVEL', 'ERROR')
 log_file = os.environ.get('LOG_FILE', 'app.log')
 logging.basicConfig(level=getattr(logging, log_level), 
                     format='%(asctime)s %(levelname)s: %(message)s',
                     handlers=[logging.FileHandler(log_file)])
 
-# Initialize CSRF protection
 csrf = CSRFProtect(app)
 Session(app)
 
-# Exempt routes that use JSON from CSRF protection
 csrf.exempt('/verify_code')
 csrf.exempt('/cast_vote')
 
-# Set security headers for all responses
 @app.after_request
 def set_security_headers(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -61,7 +55,6 @@ def set_security_headers(response):
     response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' blob: https://cdn.tailwindcss.com https://code.jquery.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data:; font-src 'self' https://cdnjs.cloudflare.com;"
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     
-    # Add cache control headers to prevent back button issues
     if request.path.startswith('/admin'):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
         response.headers['Pragma'] = 'no-cache'
@@ -69,15 +62,12 @@ def set_security_headers(response):
     
     return response
 
-# Ensure necessary directories exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
 os.makedirs(os.path.join('static', 'img', 'candidates'), exist_ok=True)
 os.makedirs(os.path.join('static', 'img', 'logos'), exist_ok=True)
 
-# SQL Injection prevention - parameterized query wrapper
 def execute_safe_query(conn, query, params=None):
-    """Execute a parameterized query to prevent SQL injection"""
     if params is None:
         params = ()
     return conn.execute(query, params)
@@ -111,7 +101,6 @@ class DBContextManager:
 
 # Input validation function
 def sanitize_input(input_string, pattern=r'[^a-zA-Z0-9_\-\s]', replacement=''):
-    """Sanitize input by removing potentially dangerous characters"""
     if input_string:
         return re.sub(pattern, replacement, input_string)
     return input_string
@@ -224,7 +213,6 @@ def index():
 @app.route('/verify_code', methods=['POST'])
 def verify_code():
     try:
-        # Get and clean the code
         code = request.form.get('code', '').strip().upper()
         code = code.replace(' ', '')
         
@@ -233,7 +221,6 @@ def verify_code():
         if not code:
             return jsonify({'success': False, 'message': 'Please enter a code'})
         
-        # Validate code format
         if not code.isalnum() or len(code) > 8:
             logging.warning(f"Invalid code format: {code}")
             return jsonify({'success': False, 'message': 'Invalid code format'})
@@ -241,22 +228,18 @@ def verify_code():
         conn = get_db()
         voter = conn.execute('SELECT * FROM voters WHERE UPPER(voting_code) = ?', (code,)).fetchone()
         
-        # Check if voter exists
         if voter is None:
             logging.info(f"Failed verification attempt with code: {code}")
             return jsonify({'success': False, 'message': 'Invalid code'})
         
-        # Check if already voted
         if voter['has_voted']:
             logging.info(f"Voter {voter['id']} with code {code} attempted to vote again")
             return jsonify({'success': False, 'message': 'You cannot vote now since it is already voted'})
         
-        # Set session variables
         session['voter_id'] = voter['id']
         session['is_teacher'] = bool(voter['is_teacher'])
         session.modified = True 
         
-        # Normalize the voting code if needed
         if voter['voting_code'] != code:
             logging.info(f"Normalizing voting code for voter {voter['id']} from {voter['voting_code']} to {code}")
             conn.execute('UPDATE voters SET voting_code = ? WHERE id = ?', (code, voter['id']))
@@ -442,29 +425,23 @@ def admin_login():
 
 @app.route('/admin/login', methods=['POST'])
 def handle_admin_login():
-    # Apply rate limiting for login attempts
     ip_address = request.remote_addr
     current_time = time.time()
     
-    # Get login attempts from the session
     login_attempts = session.get('login_attempts', {})
     
-    # Clean up old attempts (older than 30 minutes)
     login_attempts = {ip: data for ip, data in login_attempts.items() 
                      if current_time - data['timestamp'] < 1800}
     
-    # Check if IP is already blocked
     if ip_address in login_attempts and login_attempts[ip_address]['count'] >= 5:
         if current_time - login_attempts[ip_address]['timestamp'] < 1800:  # 30 minutes
             flash('Too many failed login attempts. Please try again later.', 'error')
             session['login_attempts'] = login_attempts
             return redirect(url_for('admin_login'))
     
-    # Get and sanitize credentials
     username = sanitize_input(request.form.get('username', '').strip())
     password = request.form.get('password', '')
     
-    # For debugging - log admin login attempts without password
     logging.info(f"Admin login attempt: username={username}")
     
     if not username or not password:
@@ -473,16 +450,13 @@ def handle_admin_login():
     
     try:
         with DBContextManager() as conn:
-            # Use parameterized query to prevent SQL injection
             admin = execute_safe_query(
                 conn, 
                 'SELECT id, username, password_hash FROM admin WHERE username = ?', 
                 (username,)
             ).fetchone()
             
-            # No admin found with this username
             if not admin:
-                # Record failed login attempt
                 if ip_address in login_attempts:
                     login_attempts[ip_address]['count'] += 1
                     login_attempts[ip_address]['timestamp'] = current_time
@@ -491,60 +465,47 @@ def handle_admin_login():
                 
                 session['login_attempts'] = login_attempts
                 
-                # Log failed attempt
                 logging.warning(f"Failed login attempt for nonexistent username: {username} from IP: {ip_address}")
                 flash('Invalid username or password', 'error')
                 return redirect(url_for('admin_login'))
                 
-            # For debugging
             logging.info(f"Admin found with ID: {admin['id']}, checking password...")
             
-            # Default admin account with default password
             if admin['password_hash'] == '$2b$12$qKU3YP7Nz3kzWkxpYKiMqe4JfN9aKC7GW4q1Eb1iiL6TgW/LQTKCm' and username == 'admin' and password == 'admin':
                 logging.info(f"Default admin password login success for: {username}")
                 
-                # Reset login attempts for this IP
                 if ip_address in login_attempts:
                     login_attempts.pop(ip_address)
                 session['login_attempts'] = login_attempts
                 
-                # Set admin session
                 session['admin'] = True
                 session['admin_id'] = admin['id']
                 session['admin_username'] = admin['username']
                 session['admin_last_activity'] = datetime.now().isoformat()
                 session['default_password'] = True
                 
-                # Log successful login
                 logging.info(f"Admin {username} logged in with default password")
                 
                 flash("You must change the default admin password before continuing", "warning")
                 return redirect(url_for('admin_setup'))
             
-            # Check password with standard hash comparison
-            # Try with and without whitespace in case there are invisible characters
             password_correct = check_password_hash(admin['password_hash'], password)
             password_trimmed_correct = check_password_hash(admin['password_hash'], password.strip())
             
-            # Valid credentials with proper password
             if password_correct or password_trimmed_correct:
                 logging.info(f"Password verification successful for admin: {username}")
                 
-                # Reset login attempts for this IP
                 if ip_address in login_attempts:
                     login_attempts.pop(ip_address)
                 session['login_attempts'] = login_attempts
                 
-                # Set admin session
                 session['admin'] = True
                 session['admin_id'] = admin['id']
                 session['admin_username'] = admin['username']
                 session['admin_last_activity'] = datetime.now().isoformat()
                 
-                # Log successful login
                 logging.info(f"Admin {username} logged in successfully")
                 
-                # Check for weak passwords
                 admin_variants = ['admin', 'Admin', 'ADMIN', 'administrator', 'admin123']
                 if password in admin_variants:
                     session['default_password'] = True
@@ -553,11 +514,9 @@ def handle_admin_login():
                 
                 return redirect(url_for('admin_dashboard'))
             
-            # Invalid credentials
             else:
                 logging.warning(f"Password verification failed for admin: {username}")
                 
-                # Record failed login attempt
                 if ip_address in login_attempts:
                     login_attempts[ip_address]['count'] += 1
                     login_attempts[ip_address]['timestamp'] = current_time
@@ -566,7 +525,6 @@ def handle_admin_login():
                 
                 session['login_attempts'] = login_attempts
                 
-                # Log failed attempt
                 logging.warning(f"Failed login attempt for username: {username} from IP: {ip_address} (Attempt #{login_attempts[ip_address]['count']})")
                 
                 if login_attempts[ip_address]['count'] >= 5:
@@ -663,7 +621,6 @@ def admin_dashboard():
     
     try:
         with DBContextManager() as conn:
-            # Consolidated query to get all voter statistics in one go
             stats = conn.execute('''
                 SELECT 
                     SUM(CASE WHEN is_teacher = 0 THEN 1 ELSE 0 END) as total_students,
@@ -897,7 +854,6 @@ def reset_student_code(student_id):
             new_code = generate_unique_code()
             conn.execute('UPDATE voters SET voting_code = ? WHERE id = ?', (new_code, student_id))
             
-            # Log the action
             logging.info(f"Admin {session.get('admin_username')} reset student code for student ID {student_id}")
             
             return jsonify({'success': True, 'new_code': new_code, 'message': 'Student code reset successfully'})
@@ -927,10 +883,8 @@ def reset_all_student_codes():
                 except Exception as inner_e:
                     logging.error(f"Error updating student ID {student['id']}: {inner_e}")
             
-            # Make sure to commit the changes
             conn.commit()
             
-            # Log the action
             logging.info(f"Admin {session.get('admin_username')} reset all student codes - {len(updated_students)} codes updated")
             
             return jsonify({
@@ -1100,7 +1054,6 @@ def upload_teachers():
     if not file.filename.lower().endswith('.xlsx'):
         return jsonify({'success': False, 'message': 'File must be an Excel (.xlsx) file'}), 400
     
-    # Check file size (limit to 5MB)
     file_size = file.content_length or 0
     if file_size > 5 * 1024 * 1024:  # 5MB
         return jsonify({'success': False, 'message': 'File size exceeds the 5MB limit'}), 400

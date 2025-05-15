@@ -63,7 +63,6 @@ SELECT
 FROM votes v
 JOIN voters vr ON v.voter_id = vr.id;
 
--- Add performance indexes for frequently queried columns
 CREATE INDEX idx_voters_is_teacher ON voters(is_teacher);
 CREATE INDEX idx_voters_has_voted ON voters(has_voted);
 CREATE INDEX idx_voters_class_section ON voters(class, section);
