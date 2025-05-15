@@ -122,8 +122,6 @@ The system includes comprehensive tests to verify that multiple students can vot
    - Students cannot vote more than once
    - System performance under high load
 
-For more details on testing, see the [TEST_README.md](TEST_README.md) file.
-
 ## Screenshots
 
 *Coming soon*
