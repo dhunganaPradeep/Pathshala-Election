@@ -1,9 +1,13 @@
+<div align="center">
 # Pathshala Election System
+</div>
 
 <div align="center">
     <img src="static/img/logos/logo.png" alt="Pathshala Logo" width="150">
 </div>
-
+<div>
+    
+</div>
 School captain election system designed for election in [Pathshala Nepal Foundation](https://pathshala.edu.np/). This application helps schools conduct fair and transparent elections for student leadership positions.
 
 ## Features
