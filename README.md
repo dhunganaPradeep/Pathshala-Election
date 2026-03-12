@@ -68,9 +68,7 @@ python app.py
 6. Access the application
 - Main voting page: http://localhost:5000
 - Admin panel: http://localhost:5000/admin
-- Default admin credentials: 
-  - Username: admin
-  - Password: admin
+- **First-run setup:** When you first access the admin panel, you'll be prompted to set a secure admin password. No default password is stored in the code or database.
 
 ## Production Deployment
 

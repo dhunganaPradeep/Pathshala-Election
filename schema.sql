@@ -44,13 +44,14 @@ CREATE TABLE votes (
 CREATE TABLE admin (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
+    password_hash TEXT,
+    needs_setup INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert default admin user (username: admin, password: admin)
-INSERT INTO admin (username, password_hash) 
-VALUES ('admin', '$2b$12$qKU3YP7Nz3kzWkxpYKiMqe4JfN9aKC7GW4q1Eb1iiL6TgW/LQTKCm');
+-- Insert admin user with no password (requires first-run setup)
+INSERT INTO admin (username, password_hash, needs_setup) 
+VALUES ('admin', NULL, 1);
 
 -- Create a view for weighted votes (teachers count as 6 points)
 CREATE VIEW vote_weights AS

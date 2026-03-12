@@ -31,7 +31,7 @@ app.config['SESSION_FILE_DIR'] = os.environ.get('SESSION_FILE_DIR', 'flask_sessi
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
-app.config['SESSION_COOKIE_SECURE'] = True  
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to False to allow local HTTP usage
 app.config['SESSION_COOKIE_HTTPONLY'] = True  
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax' 
 
@@ -44,15 +44,12 @@ logging.basicConfig(level=getattr(logging, log_level),
 csrf = CSRFProtect(app)
 Session(app)
 
-csrf.exempt('/verify_code')
-csrf.exempt('/cast_vote')
-
 @app.after_request
 def set_security_headers(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-XSS-Protection'] = '1; mode=block'
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' blob: https://cdn.tailwindcss.com https://code.jquery.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data:; font-src 'self' https://cdnjs.cloudflare.com;"
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' blob: https://cdn.tailwindcss.com https://code.jquery.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com;"
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     
     if request.path.startswith('/admin'):
@@ -148,32 +145,13 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 @app.before_request
-def check_admin_default_password():
+def check_admin_needs_setup():
     if request.endpoint and request.endpoint.startswith('admin_') and request.endpoint not in ['admin_login', 'admin_logout', 'admin_setup']:
         if session.get('admin'):
-            if session.get('default_password'):
-                flash("Security warning: Your account is using an insecure password. You must change it before proceeding.", "warning")
-                return redirect(url_for('admin_setup'))
-            
             with DBContextManager() as conn:
-                admin = conn.execute('SELECT id, username, password_hash FROM admin WHERE id = ?', (session.get('admin_id'),)).fetchone()
-                
-                if admin:
-                    admin_variants = ['admin', 'Admin', 'ADMIN', 'administrator', 'admin123']
-                    is_using_admin_password = False
-                    
-                    for variant in admin_variants:
-                        if check_password_hash(admin['password_hash'], variant):
-                            is_using_admin_password = True
-                            break
-                    
-                    if admin['password_hash'] == '$2b$12$qKU3YP7Nz3kzWkxpYKiMqe4JfN9aKC7GW4q1Eb1iiL6TgW/LQTKCm':
-                        is_using_admin_password = True
-                    
-                    if is_using_admin_password:
-                        session['default_password'] = True
-                        flash("Security warning: Your account is using an insecure password. You must change it before proceeding.", "warning")
-                        return redirect(url_for('admin_setup'))
+                admin = conn.execute('SELECT needs_setup FROM admin WHERE id = ?', (session.get('admin_id'),)).fetchone()
+                if admin and admin['needs_setup']:
+                    return redirect(url_for('admin_setup'))
     
 @app.before_request
 def check_admin_timeout():
@@ -211,6 +189,7 @@ def index():
     return render_template('index.html')
 
 @app.route('/verify_code', methods=['POST'])
+@csrf.exempt
 def verify_code():
     try:
         code = request.form.get('code', '').strip().upper()
@@ -238,6 +217,7 @@ def verify_code():
         
         session['voter_id'] = voter['id']
         session['is_teacher'] = bool(voter['is_teacher'])
+        session.permanent = True
         session.modified = True 
         
         if voter['voting_code'] != code:
@@ -320,6 +300,7 @@ def vote():
         return redirect(url_for('index'))
 
 @app.route('/cast_vote', methods=['POST'])
+@csrf.exempt
 def cast_vote():
     if 'voter_id' not in session:
         return jsonify({'success': False, 'message': 'You are not authorized to vote. Please enter your voting code first.'})
@@ -400,31 +381,30 @@ def cast_vote():
 # Admin routes
 @app.route('/admin')
 def admin_login():
-    if session.get('admin'):
+    # Check if any admin account needs first-time setup
+    try:
         with DBContextManager() as conn:
-            admin = conn.execute('SELECT password_hash FROM admin WHERE id = ?', (session['admin_id'],)).fetchone()
-            
-            if admin:
-                admin_variants = ['admin', 'Admin', 'ADMIN', 'administrator', 'admin123']
-                is_using_admin_password = False
-                
-                for variant in admin_variants:
-                    if check_password_hash(admin['password_hash'], variant):
-                        is_using_admin_password = True
-                        break
-                
-                if admin['password_hash'] == '$2b$12$qKU3YP7Nz3kzWkxpYKiMqe4JfN9aKC7GW4q1Eb1iiL6TgW/LQTKCm':
-                    is_using_admin_password = True
-                
-                if is_using_admin_password:
-                    session['default_password'] = True
-                    flash("Security warning: Your account is using an insecure password. You must change it before proceeding.", "warning")
-                    return redirect(url_for('admin_setup'))
+            admin = conn.execute('SELECT id, needs_setup FROM admin LIMIT 1').fetchone()
+            if admin and admin['needs_setup']:
+                return redirect(url_for('admin_setup'))
+    except Exception:
+        pass
+    
+    if session.get('admin'):
         return redirect(url_for('admin_dashboard'))
     return render_template('admin/login.html')
 
 @app.route('/admin/login', methods=['POST'])
 def handle_admin_login():
+    # If admin needs first-time setup, redirect there instead of processing login
+    try:
+        with DBContextManager() as conn:
+            setup_check = conn.execute('SELECT needs_setup FROM admin LIMIT 1').fetchone()
+            if setup_check and setup_check['needs_setup']:
+                return redirect(url_for('admin_setup'))
+    except Exception:
+        pass
+    
     ip_address = request.remote_addr
     current_time = time.time()
     
@@ -433,10 +413,15 @@ def handle_admin_login():
     login_attempts = {ip: data for ip, data in login_attempts.items() 
                      if current_time - data['timestamp'] < 1800}
     
+    wants_json = request.form.get('ajax') == '1' or 'application/json' in request.headers.get('Accept', '')
+    
     if ip_address in login_attempts and login_attempts[ip_address]['count'] >= 5:
         if current_time - login_attempts[ip_address]['timestamp'] < 1800:  # 30 minutes
-            flash('Too many failed login attempts. Please try again later.', 'error')
             session['login_attempts'] = login_attempts
+            
+            if wants_json:
+                return jsonify({'success': False, 'message': 'Too many failed login attempts. Please try again later.'})
+            flash('Too many failed login attempts. Please try again later.', 'error')
             return redirect(url_for('admin_login'))
     
     username = sanitize_input(request.form.get('username', '').strip())
@@ -445,6 +430,8 @@ def handle_admin_login():
     logging.info(f"Admin login attempt: username={username}")
     
     if not username or not password:
+        if wants_json:
+            return jsonify({'success': False, 'message': 'Username and password are required'})
         flash('Username and password are required', 'error')
         return redirect(url_for('admin_login'))
     
@@ -452,7 +439,7 @@ def handle_admin_login():
         with DBContextManager() as conn:
             admin = execute_safe_query(
                 conn, 
-                'SELECT id, username, password_hash FROM admin WHERE username = ?', 
+                'SELECT id, username, password_hash, needs_setup FROM admin WHERE username = ?', 
                 (username,)
             ).fetchone()
             
@@ -466,31 +453,31 @@ def handle_admin_login():
                 session['login_attempts'] = login_attempts
                 
                 logging.warning(f"Failed login attempt for nonexistent username: {username} from IP: {ip_address}")
+                if wants_json:
+                    return jsonify({'success': False, 'message': 'Invalid username or password'})
                 flash('Invalid username or password', 'error')
                 return redirect(url_for('admin_login'))
+            
+            # If this admin still needs setup, redirect
+            if admin['needs_setup']:
+                if wants_json:
+                    return jsonify({'success': True, 'redirect': url_for('admin_setup')})
+                return redirect(url_for('admin_setup'))
                 
             logging.info(f"Admin found with ID: {admin['id']}, checking password...")
             
-            if admin['password_hash'] == '$2b$12$qKU3YP7Nz3kzWkxpYKiMqe4JfN9aKC7GW4q1Eb1iiL6TgW/LQTKCm' and username == 'admin' and password == 'admin':
-                logging.info(f"Default admin password login success for: {username}")
-                
-                if ip_address in login_attempts:
-                    login_attempts.pop(ip_address)
-                session['login_attempts'] = login_attempts
-                
-                session['admin'] = True
-                session['admin_id'] = admin['id']
-                session['admin_username'] = admin['username']
-                session['admin_last_activity'] = datetime.now().isoformat()
-                session['default_password'] = True
-                
-                logging.info(f"Admin {username} logged in with default password")
-                
-                flash("You must change the default admin password before continuing", "warning")
-                return redirect(url_for('admin_setup'))
-            
-            password_correct = check_password_hash(admin['password_hash'], password)
-            password_trimmed_correct = check_password_hash(admin['password_hash'], password.strip())
+            try:
+                password_correct = check_password_hash(admin['password_hash'], password)
+                password_trimmed_correct = check_password_hash(admin['password_hash'], password.strip())
+            except TypeError as e:
+                if "digestmod" in str(e):
+                    logging.error("Incompatible hash format detected (digestmod error). Resetting admin setup.")
+                    with DBContextManager() as reset_conn:
+                        reset_conn.execute('UPDATE admin SET needs_setup = 1 WHERE id = ?', (admin['id'],))
+                    if wants_json:
+                        return jsonify({'success': True, 'redirect': url_for('admin_setup')})
+                    return redirect(url_for('admin_setup'))
+                raise e
             
             if password_correct or password_trimmed_correct:
                 logging.info(f"Password verification successful for admin: {username}")
@@ -506,12 +493,8 @@ def handle_admin_login():
                 
                 logging.info(f"Admin {username} logged in successfully")
                 
-                admin_variants = ['admin', 'Admin', 'ADMIN', 'administrator', 'admin123']
-                if password in admin_variants:
-                    session['default_password'] = True
-                    flash("Security warning: Your account is using an insecure password. You must change it before proceeding.", "warning")
-                    return redirect(url_for('admin_setup'))
-                
+                if wants_json:
+                    return jsonify({'success': True, 'redirect': url_for('admin_dashboard')})
                 return redirect(url_for('admin_dashboard'))
             
             else:
@@ -528,84 +511,88 @@ def handle_admin_login():
                 logging.warning(f"Failed login attempt for username: {username} from IP: {ip_address} (Attempt #{login_attempts[ip_address]['count']})")
                 
                 if login_attempts[ip_address]['count'] >= 5:
+                    if wants_json:
+                        return jsonify({'success': False, 'message': 'Too many failed login attempts. Please try again later.'})
                     flash('Too many failed login attempts. Please try again later.', 'error')
                 else:
+                    if wants_json:
+                        return jsonify({'success': False, 'message': 'Invalid username or password'})
                     flash('Invalid username or password', 'error')
                 
                 return redirect(url_for('admin_login'))
                 
     except Exception as e:
         logging.error(f"Error during login: {str(e)}")
+        if wants_json:
+            return jsonify({'success': False, 'message': 'An error occurred during login. Please try again.'})
         flash('An error occurred during login. Please try again.', 'error')
         return redirect(url_for('admin_login'))
 
 @app.route('/admin/setup', methods=['GET', 'POST'])
 def admin_setup():
-    if not session.get('admin'):
+    # Allow access without session for first-time setup
+    with DBContextManager() as conn:
+        admin = conn.execute('SELECT id, username, needs_setup FROM admin LIMIT 1').fetchone()
+        
+        if not admin:
+            flash('No admin account found. Please reinitialize the database.', 'error')
+            return redirect(url_for('admin_login'))
+        
+        is_first_setup = bool(admin['needs_setup'])
+        admin_id = admin['id']
+        admin_username = admin['username']
+    
+    # If not first-time setup, require login
+    if not is_first_setup and not session.get('admin'):
         return redirect(url_for('admin_login'))
     
-    with DBContextManager() as conn:
-        admin = conn.execute('SELECT password_hash FROM admin WHERE id = ?', (session['admin_id'],)).fetchone()
-        
-        if admin:
-            admin_variants = ['admin', 'Admin', 'ADMIN', 'administrator', 'admin123']
-            is_using_insecure_password = False
-            
-            for variant in admin_variants:
-                if check_password_hash(admin['password_hash'], variant):
-                    is_using_insecure_password = True
-                    break
-            
-            if admin['password_hash'] == '$2b$12$qKU3YP7Nz3kzWkxpYKiMqe4JfN9aKC7GW4q1Eb1iiL6TgW/LQTKCm':
-                is_using_insecure_password = True
-            
-            if not is_using_insecure_password and not session.get('default_password'):
-                if 'default_password' in session:
-                    session.pop('default_password', None)
-                return redirect(url_for('admin_dashboard'))
+    # If admin is logged in and doesn't need setup, go to dashboard
+    if not is_first_setup and session.get('admin'):
+        return redirect(url_for('admin_dashboard'))
     
     if request.method == 'POST':
-        current_password = request.form.get('current_password')
         new_password = request.form.get('new_password')
         confirm_password = request.form.get('confirm_password')
         
         if not new_password or not confirm_password:
             flash('Both fields are required', 'error')
-            return render_template('admin/setup.html')
+            return render_template('admin/setup.html', is_first_setup=is_first_setup)
         
         if new_password != confirm_password:
             flash('Passwords do not match', 'error')
-            return render_template('admin/setup.html')
+            return render_template('admin/setup.html', is_first_setup=is_first_setup)
         
-        admin_variants = ['admin', 'Admin', 'ADMIN', 'administrator', 'admin123']
         if any(variant in new_password.lower() for variant in ['admin', 'administrator']):
             flash('Your password cannot contain "admin" or "administrator"', 'error')
-            return render_template('admin/setup.html')
+            return render_template('admin/setup.html', is_first_setup=is_first_setup)
         
         if len(new_password) < 8:
             flash('Password must be at least 8 characters long', 'error')
-            return render_template('admin/setup.html')
+            return render_template('admin/setup.html', is_first_setup=is_first_setup)
         
         try:
             with DBContextManager() as conn:
-                new_password_hash = generate_password_hash(new_password)
-                conn.execute('UPDATE admin SET password_hash = ? WHERE id = ?', 
-                          (new_password_hash, session['admin_id']))
+                new_password_hash = generate_password_hash(new_password, method="pbkdf2:sha256")
+                conn.execute('UPDATE admin SET password_hash = ?, needs_setup = 0 WHERE id = ?', 
+                          (new_password_hash, admin_id))
                 conn.commit()
                 
-                logging.info(f"Admin {session['admin_username']} successfully changed password")
+                logging.info(f"Admin '{admin_username}' completed password setup")
                 
-                if 'default_password' in session:
-                    session.pop('default_password', None)
+                # Auto-login after first-time setup
+                session['admin'] = True
+                session['admin_id'] = admin_id
+                session['admin_username'] = admin_username
+                session['admin_last_activity'] = datetime.now().isoformat()
                 
-                flash('Password successfully changed', 'success')
+                flash('Admin password set successfully! Welcome to the dashboard.', 'success')
                 return redirect(url_for('admin_dashboard'))
         except Exception as e:
-            logging.error(f"Error changing password: {str(e)}")
-            flash(f'Error changing password: {str(e)}', 'error')
-            return render_template('admin/setup.html')
+            logging.error(f"Error setting admin password: {str(e)}")
+            flash(f'Error setting password: {str(e)}', 'error')
+            return render_template('admin/setup.html', is_first_setup=is_first_setup)
     
-    return render_template('admin/setup.html')
+    return render_template('admin/setup.html', is_first_setup=is_first_setup)
 
 @app.route('/admin/logout')
 def admin_logout():
@@ -1473,6 +1460,40 @@ def delete_candidate(candidate_id):
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
+@app.route('/admin/candidate/revoke/<int:candidate_id>', methods=['POST'])
+def revoke_candidate(candidate_id):
+    if not session.get('admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'})
+    
+    try:
+        with DBContextManager() as conn:
+            candidate = conn.execute('SELECT * FROM candidates WHERE id = ?', (candidate_id,)).fetchone()
+            if not candidate:
+                return jsonify({'success': False, 'message': 'Candidate not found'})
+            
+            # Delete image and logo files
+            if candidate['image_path'] and os.path.exists(candidate['image_path']):
+                try:
+                    os.remove(candidate['image_path'])
+                except Exception as e:
+                    logging.warning(f"Could not delete image file {candidate['image_path']}: {str(e)}")
+            
+            if candidate['logo_path'] and os.path.exists(candidate['logo_path']):
+                try:
+                    os.remove(candidate['logo_path'])
+                except Exception as e:
+                    logging.warning(f"Could not delete logo file {candidate['logo_path']}: {str(e)}")
+            
+            # Delete votes and then delete the candidate record
+            conn.execute('DELETE FROM votes WHERE candidate_id = ?', (candidate_id,))
+            conn.execute('DELETE FROM candidates WHERE id = ?', (candidate_id,))
+            conn.commit()
+            
+            logging.info(f"Candidate {candidate['name']} (ID: {candidate_id}) revoked and deleted from system.")
+            return jsonify({'success': True, 'message': 'Candidate revoked and deleted successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
 # Results page
 @app.route('/admin/results')
 def admin_results():
@@ -1778,9 +1799,22 @@ def admin_reset_confirm():
             return jsonify({'success': False, 'message': 'Incorrect admin password'})
     
     try:
-        init_db()
+        # Clear election data but preserve the admin account
+        with DBContextManager() as conn:
+            conn.execute('DELETE FROM votes')
+            conn.execute('DELETE FROM candidates')
+            conn.execute('DELETE FROM voters')
+            
+            # Reset auto-increment sequences for cleared tables
+            for table in ['votes', 'candidates', 'voters']:
+                conn.execute(f"DELETE FROM sqlite_sequence WHERE name = ?", (table,))
+            
+            conn.commit()
+        
+        logging.info(f"Admin {session.get('admin_username')} performed data reset (admin account preserved)")
         return jsonify({'success': True})
     except Exception as e:
+        logging.error(f"Error during data reset: {str(e)}")
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/admin/students/download')
@@ -2279,18 +2313,10 @@ def admin_change_password():
             if current_password == new_password:
                 return jsonify({'success': False, 'message': 'New password cannot be the same as current password'})
             
-            new_password_hash = generate_password_hash(new_password)
-            
-            is_default_hash = admin['password_hash'] == '$2b$12$qKU3YP7Nz3kzWkxpYKiMqe4JfN9aKC7GW4q1Eb1iiL6TgW/LQTKCm'
-            
-            if is_default_hash:
-                logging.info(f"Admin {session.get('admin_username')} is changing from default password")
+            new_password_hash = generate_password_hash(new_password, method="scrypt")
             
             conn.execute('UPDATE admin SET password_hash = ? WHERE id = ?', (new_password_hash, session['admin_id']))
             conn.commit()
-            
-            if 'default_password' in session:
-                session.pop('default_password', None)
                 
             logging.info(f"Password successfully changed for admin {session.get('admin_username')}")
             return jsonify({'success': True, 'message': 'Password changed successfully'})
@@ -2445,4 +2471,5 @@ if __name__ == '__main__':
         init_db()
     
     # Production mode
-    app.run(debug=False, host='0.0.0.0')
+    # app.run(debug=False, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0')

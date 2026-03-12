@@ -462,8 +462,10 @@
                 
                 $('#edit-modal .text-xl.font-bold').text('Edit Candidate');
                 
-                $('#edit-candidate-form button[type="submit"]').html('Save Changes');
-                $('#cancel-edit').text('Cancel');
+                $('#revoke-candidate').remove();
+                
+                $('#edit-candidate-form button[type="submit"]').html('<i class="fas fa-save mr-1"></i> Save Changes').show();
+                $('#cancel-edit').text('Cancel').show();
                 
                 $('#edit-modal').removeClass('hidden');
             });
@@ -502,6 +504,12 @@
                     
                     $('#cancel-edit').text('Close');
                     
+                    // Always ensure cancel is visible
+                    $('#cancel-edit').show();
+                    
+                    // Completely hide the form submit button in view mode, so there's no "Save Changes" or "Edit Info"
+                    $('#edit-candidate-form button[type="submit"]').hide();
+                    
                     $('#edit-modal').removeClass('hidden');
                 }
             });
@@ -510,18 +518,6 @@
         attachCardEventHandlers();
         
         let candidateToEdit = null;
-        
-        $(document).on('click', '#edit-candidate-form button[type="submit"]', function() {
-            if ($('#edit-name').prop('readonly')) {
-                $('#edit-name, #edit-slogan, #edit-description').prop('readonly', false);
-                $('#edit-image, #edit-logo').show();
-                $(this).html('<i class="fas fa-save mr-1"></i> Save Changes');
-                
-                $('#edit-modal .text-xl.font-bold').text('Edit Candidate');
-                
-                return false;
-            }
-        });
         
         $(document).on('click', '#revoke-candidate', function() {
             const candidateId = $('#edit-id').val();

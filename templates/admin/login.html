@@ -165,9 +165,13 @@
             if (csrfElement) {
                 formData.append('csrf_token', csrfElement.getAttribute('content'));
             }
+            formData.append('ajax', '1');
             
             fetch('/admin/login', {
                 method: 'POST',
+                headers: {
+                    'Accept': 'application/json'
+                },
                 body: formData
             })
             .then(response => {
@@ -190,12 +194,27 @@
                     
                     try {
                         const data = JSON.parse(text);
-                        showError(data.message || 'Invalid username or password');
+                        if (data.success) {
+                            const loginCard = document.querySelector('.animate-fadeInUp');
+                            loginCard.classList.add('transform', 'translate-y-[-100vh]', 'opacity-0');
+                            loginCard.style.transition = 'transform 0.8s ease, opacity 0.8s ease';
+                            
+                            setTimeout(() => {
+                                window.location.href = data.redirect || '/admin/dashboard';
+                            }, 800);
+                        } else {
+                            showError(data.message || 'Invalid username or password');
+                        }
                     } catch (e) {
-                        // Check for error messages in the HTML
+                        // The server sent HTML back (likely a re-render with a flash message), 
+                        // or it was a redirect that got blocked by fetch but executed manually.
+                        // For HTML responses, let's extract the flash message.
                         const tempDiv = document.createElement('div');
                         tempDiv.innerHTML = text;
-                        const flashMessage = tempDiv.querySelector('.alert-error') || tempDiv.querySelector('.alert-danger');
+                        // Search for the flash message container which has border-red-500 or bg-red-100 classes
+                        const flashMessage = tempDiv.querySelector('.bg-red-100.border-red-500.text-red-700') || 
+                                             tempDiv.querySelector('.alert-error') || 
+                                             tempDiv.querySelector('.alert-danger');
                         if (flashMessage) {
                             showError(flashMessage.textContent.trim());
                         } else {
@@ -216,7 +235,8 @@
         function showError(message) {
             errorMessage.textContent = message;
             errorMessage.classList.remove('hidden');
-            const loginCard = document.querySelector('.animate-fadeInUp');
+            const loginCard = document.querySelector('.max-w-md'); // Target explicitly by class rather than animation class
+            loginCard.classList.remove('animate-fadeInUp'); // Remove fade-in so shake doesn't conflict/reset
             loginCard.classList.add('animate-shake');
             
             setTimeout(() => {

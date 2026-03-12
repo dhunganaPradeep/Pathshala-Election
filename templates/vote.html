@@ -3,69 +3,282 @@
 {% block title %}Pathshala Election 2082 - Vote for School Captain{% endblock %}
 
 {% block head %}
-<!-- CSRF Token for AJAX requests -->
 <meta name="csrf-token" content="{{ csrf_token() }}">
-
-<!-- Add link to custom CSS file -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
 <style>
-    .candidate-logo {
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    :root {
+        --green: #16a34a;
+        --orange: #f97316;
+        --bg: #f7f7f5;
+        --surface: #ffffff;
+        --border: #e4e4e0;
+        --text: #111111;
+        --muted: #71717a;
+        --r: 14px;
+        font-family: 'DM Sans', sans-serif;
+    }
+
+    /* ─── Shell ─────────────────────────────────────── */
+    html,
+    body {
+        height: 100%;
+    }
+
+    .vote-page {
+        min-height: 100vh;
+        background-color: var(--bg);
+        background-image: url('/static/img/logos/logo.png');
+        background-repeat: no-repeat;
+        background-position: center center;
+        background-size: 55vmin;
+        background-attachment: fixed;
+        /* darken the logo to near-invisible but still present */
+        position: relative;
+    }
+
+    /* semi-transparent overlay that tints bg but lets logo bleed through at ~8% */
+    .vote-page::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: rgba(247, 247, 245, 0.92);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .vote-page>* {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* ─── Header ─────────────────────────────────────── */
+    .vote-header {
+        text-align: center;
+        padding: 40px 24px 28px;
+    }
+
+    .vote-header__eyebrow {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 10px;
+    }
+
+    .vote-header__title {
+        font-size: clamp(1.5rem, 3vw, 2.2rem);
+        font-weight: 700;
+        color: var(--text);
+        letter-spacing: -0.03em;
+        line-height: 1.15;
+    }
+
+    .vote-header__rule {
+        width: 48px;
+        height: 3px;
+        margin: 14px auto 0;
+        border-radius: 99px;
+        background: linear-gradient(90deg, var(--green), var(--orange));
+    }
+
+    /* ─── Grid ───────────────────────────────────────── */
+    .vote-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 32px 48px;
+        align-items: start;
+    }
+
+    .vote-col {
+        padding: 0 20px;
+    }
+
+    .vote-col+.vote-col {
+        border-left: 1px solid var(--border);
+    }
+
+    /* ─── Section heading ────────────────────────────── */
+    .vote-col__heading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .vote-col__badge {
         width: 32px;
         height: 32px;
-        object-fit: contain;
-    }
-    
-    .candidate-card {
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
-        height: auto; /* Auto height instead of fixed */
-    }
-    
-    .candidate-card:hover:not(.disabled) {
-        transform: translateY(-8px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-    }
-    
-    .selected-card {
-        border-color: #16a34a;
-        box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.3), 0 10px 20px rgba(0, 0, 0, 0.1);
-        transform: translateY(-8px);
-    }
-    
-    .female-selected-card {
-        border-color: #f97316;
-        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.3), 0 10px 20px rgba(0, 0, 0, 0.1);
-        transform: translateY(-8px);
-    }
-    
-    .selected-card::after {
-        content: '✓';
-        position: absolute;
-        top: -15px;
-        right: -15px;
-        width: 32px;
-        height: 32px;
-        background-color: #16a34a;
-        color: white;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 18px;
-        font-weight: bold;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
     }
-    
+
+    .vote-col__badge--male {
+        background: var(--green);
+    }
+
+    .vote-col__badge--female {
+        background: var(--orange);
+    }
+
+    .vote-col__title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .vote-col__hint {
+        font-size: 0.72rem;
+        color: var(--muted);
+        margin-left: auto;
+    }
+
+    /* ─── Cards grid ─────────────────────────────────── */
+    .candidates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 14px;
+    }
+
+    /* ─── Card ───────────────────────────────────────── */
+    .candidate-card {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--r);
+        padding: 18px 16px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        transition: border-color .2s, box-shadow .2s, transform .22s;
+        position: relative;
+    }
+
+    .candidate-card:hover:not(.disabled) {
+        border-color: #c4c4be;
+        box-shadow: 0 6px 22px rgba(0, 0, 0, .08);
+        transform: translateY(-3px);
+    }
+
+    /* ── Selected states ── */
+    .selected-card {
+        border-color: var(--green) !important;
+        box-shadow: 0 0 0 3px rgba(22, 163, 74, .15), 0 6px 22px rgba(0, 0, 0, .09) !important;
+        transform: translateY(-3px) !important;
+    }
+
+    .female-selected-card {
+        border-color: var(--orange) !important;
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, .15), 0 6px 22px rgba(0, 0, 0, .09) !important;
+        transform: translateY(-3px) !important;
+    }
+
+    .selected-card::after,
     .female-selected-card::after {
-        background-color: #f97316;
+        content: '✓';
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--green);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, .2);
     }
-    
+
+    .female-selected-card::after {
+        background: var(--orange);
+    }
+
+    .disabled {
+        opacity: 0.38;
+        pointer-events: none;
+    }
+
+    /* ── Card top row ── */
+    .candidate-card__top {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .candidate-card__logo {
+        width: 36px;
+        height: 36px;
+        object-fit: contain;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        padding: 3px;
+        background: #fff;
+        flex-shrink: 0;
+    }
+
+    .candidate-card__name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text);
+        line-height: 1.25;
+    }
+
+    /* ── Slogan ── */
+    .candidate-card__slogan {
+        font-size: 0.78rem;
+        color: var(--muted);
+        font-style: italic;
+        line-height: 1.45;
+        min-height: 1.45em;
+    }
+
+    /* ── Vote button ── */
     .vote-btn {
+        margin-top: auto;
+        width: 100%;
+        padding: 9px 14px;
+        border: none;
+        border-radius: 9px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        font-family: inherit;
+        color: #fff;
+        background: var(--green);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: opacity .15s, transform .15s;
         position: relative;
         overflow: hidden;
         z-index: 1;
     }
-    
+
     .vote-btn::before {
         content: '';
         position: absolute;
@@ -73,166 +286,242 @@
         left: -100%;
         width: 100%;
         height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        transition: 0.5s;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .22), transparent);
+        transition: .45s;
         z-index: -1;
     }
-    
+
     .vote-btn:hover::before {
         left: 100%;
     }
-    
-    .disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        pointer-events: none;
+
+    .vote-btn:hover {
+        opacity: .88;
+    }
+
+    /* ─── Empty state ────────────────────────────────── */
+    .candidates-empty {
+        font-size: 0.85rem;
+        color: var(--muted);
+        padding: 32px;
+        text-align: center;
+        background: var(--surface);
+        border: 1.5px dashed var(--border);
+        border-radius: var(--r);
+    }
+
+    /* ─── Modal ──────────────────────────────────────── */
+    .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, .55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99;
+    }
+
+    .modal.hidden {
+        display: none;
+    }
+
+    .modal__box {
+        background: var(--surface);
+        border-radius: 20px;
+        overflow: hidden;
+        max-width: 380px;
+        width: 92%;
+        text-align: center;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, .22);
+        animation: popIn .28s cubic-bezier(.34, 1.56, .64, 1);
+    }
+
+    @keyframes popIn {
+        from {
+            transform: scale(.84);
+            opacity: 0;
+        }
+
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .modal__band {
+        padding: 32px 24px 22px;
+        background: linear-gradient(135deg, var(--green), #0d9488);
+        color: #fff;
+    }
+
+    .modal__icon {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 10px;
+    }
+
+    .modal__title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+    }
+
+    .modal__body {
+        padding: 22px 28px;
+    }
+
+    .modal__text {
+        font-size: 0.85rem;
+        color: var(--muted);
+        line-height: 1.6;
+    }
+
+    .modal__countdown {
+        margin-top: 12px;
+        font-size: 0.75rem;
+        color: #aaa;
+    }
+
+    /* ─── Teacher badge ──────────────────────────────── */
+    .teacher-badge {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        background: var(--green);
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 600;
+        font-family: inherit;
+        padding: 6px 14px;
+        border-radius: 99px;
+        box-shadow: 0 2px 10px rgba(22, 163, 74, .35);
+        z-index: 50;
+    }
+
+    /* ─── Responsive ─────────────────────────────────── */
+    @media (max-width: 680px) {
+        .vote-grid {
+            grid-template-columns: 1fr;
+            padding: 0 16px 40px;
+        }
+
+        .vote-col+.vote-col {
+            border-left: none;
+            border-top: 1px solid var(--border);
+            padding-top: 24px;
+            margin-top: 24px;
+        }
     }
 </style>
-<script>
-    // Ensure Tailwind is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        if (typeof tailwind === 'undefined') {
-            console.error('Tailwind is not defined. Loading fallback styles...');
-            
-            // Create and append a fallback stylesheet for critical styles
-            const fallbackStyles = document.createElement('style');
-            fallbackStyles.textContent = `
-                .bg-white { background-color: white; }
-                .bg-primary-DEFAULT { background-color: #16a34a; }
-                .bg-secondary-DEFAULT { background-color: #f97316; }
-                .text-white { color: white; }
-                .text-gray-800 { color: #1f2937; }
-                .text-gray-600 { color: #4b5563; }
-                .rounded-xl { border-radius: 0.75rem; }
-                .rounded-full { border-radius: 9999px; }
-                .shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-                .font-bold { font-weight: 700; }
-            `;
-            document.head.appendChild(fallbackStyles);
-        }
-    });
-</script>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto px-4 py-8">
-    <div class="text-center mb-8">
-        <h2 class="text-3xl font-bold text-gray-800 inline-block relative pb-3">
-            School Captain Election 2082
-            <span class="absolute left-1/2 -ml-12 bottom-0 h-1 w-24 bg-gradient-to-r from-primary-DEFAULT to-secondary-DEFAULT rounded"></span>
-        </h2>
-        <p class="text-gray-600 mt-3 text-lg">Cast your vote for the future leaders of Pathshala School</p>
-    </div>
-    
+<div class="vote-page">
+
+    <!-- Header -->
+    <header class="vote-header">
+        <span class="vote-header__eyebrow">Pathshala Nepal Foundation </span><br>
+        <span class="vote-header__eyebrow">Pre-Uni Program</span>
+        <h1 class="vote-header__title">School Captain Election - 2083</h1>
+        <div class="vote-header__rule"></div>
+    </header>
+
     <form id="voting-form">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div id="male-candidates-section">
-                <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-                    <div class="h-8 w-8 rounded-full bg-primary-DEFAULT text-white flex items-center justify-center mr-2">
+        <div class="vote-grid">
+
+            <!-- Male column -->
+            <div class="vote-col" id="male-candidates-section">
+                <div class="vote-col__heading">
+                    <div class="vote-col__badge vote-col__badge--male">
                         <i class="fas fa-male"></i>
                     </div>
-                    Male Candidates
-                    <span class="ml-3 text-sm font-normal text-gray-500">(Select one)</span>
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <span class="vote-col__title">Male Candidates</span>
+                    <span class="vote-col__hint">Pick one</span>
+                </div>
+
+                <div class="candidates-grid">
                     {% if male_candidates %}
-                        {% for candidate in male_candidates %}
-                        <div class="candidate-card relative bg-white rounded-xl overflow-hidden border-2 border-gray-100 shadow-md transition-all duration-300 p-4">
-                            <div class="flex items-center mb-3">
-                                {% if candidate.logo_path %}
-                                <div class="bg-white rounded-md p-1 shadow-sm border border-gray-100 mr-3">
-                                    <img src="{{ candidate.logo_path }}" alt="Party logo" class="candidate-logo">
-                                </div>
-                                {% endif %}
-                                <h4 class="text-xl font-bold text-gray-800">{{ candidate.name }}</h4>
-                                <span class="ml-auto bg-gradient-to-r from-green-100 to-green-200 text-primary-DEFAULT text-xs font-medium px-2 py-1 rounded-full shadow-sm">
-                                    Male
-                                </span>
-                            </div>
-                            
-                            {% if candidate.slogan %}
-                            <p class="text-sm italic text-gray-600 mb-3 min-h-[28px]">"{{ candidate.slogan }}"</p>
-                            {% else %}
-                            <div class="mb-3 min-h-[28px]"></div>
+                    {% for candidate in male_candidates %}
+                    <div class="candidate-card">
+                        <div class="candidate-card__top">
+                            {% if candidate.logo_path %}
+                            <img src="{{ candidate.logo_path }}" alt="" class="candidate-card__logo candidate-logo">
                             {% endif %}
-                            
-                            <button type="button" class="vote-btn male-vote-btn w-full py-2 px-4 bg-green-700 hover:bg-primary-dark text-white font-medium rounded-full transition duration-300 flex items-center justify-center shadow-md" data-candidate-id="{{ candidate.id }}" data-gender="male">
-                                <i class="fas fa-vote-yea mr-2"></i> Vote
-                            </button>
+                            <span class="candidate-card__name">{{ candidate.name }}</span>
                         </div>
-                        {% endfor %}
+                        {% if candidate.slogan %}
+                        <p class="candidate-card__slogan">"{{ candidate.slogan }}"</p>
+                        {% else %}
+                        <p class="candidate-card__slogan"></p>
+                        {% endif %}
+                        <button type="button" class="vote-btn male-vote-btn" data-candidate-id="{{ candidate.id }}"
+                            data-gender="male">
+                            <i class="fas fa-vote-yea"></i> Vote
+                        </button>
+                    </div>
+                    {% endfor %}
                     {% else %}
-                    <div class="col-span-full">
-                        <div class="bg-gray-100 rounded-xl p-10 text-center text-gray-500">
-                            <i class="fas fa-user-slash text-4xl mb-3"></i>
-                            <p>No male candidates found</p>
-                        </div>
+                    <div class="col-span-full candidates-empty">
+                        <i class="fas fa-user-slash"></i><br>No male candidates available
                     </div>
                     {% endif %}
                 </div>
             </div>
-            
-            <!-- Female Candidates Section -->
-            <div id="female-candidates-section">
-                <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-                    <div class="h-8 w-8 rounded-full bg-secondary-DEFAULT text-white flex items-center justify-center mr-2">
+
+            <!-- Female column -->
+            <div class="vote-col" id="female-candidates-section">
+                <div class="vote-col__heading">
+                    <div class="vote-col__badge vote-col__badge--female">
                         <i class="fas fa-female"></i>
                     </div>
-                    Female Candidates
-                    <span class="ml-3 text-sm font-normal text-gray-500">(Select one)</span>
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <span class="vote-col__title">Female Candidates</span>
+                    <span class="vote-col__hint">Pick one</span>
+                </div>
+
+                <div class="candidates-grid">
                     {% if female_candidates %}
-                        {% for candidate in female_candidates %}
-                        <div class="candidate-card relative bg-white rounded-xl overflow-hidden border-2 border-gray-100 shadow-md transition-all duration-300 p-4">
-                            <div class="flex items-center mb-3">
-                                {% if candidate.logo_path %}
-                                <div class="bg-white rounded-md p-1 shadow-sm border border-gray-100 mr-3">
-                                    <img src="{{ candidate.logo_path }}" alt="Party logo" class="candidate-logo">
-                                </div>
-                                {% endif %}
-                                <h4 class="text-xl font-bold text-gray-800">{{ candidate.name }}</h4>
-                                <span class="ml-auto bg-gradient-to-r from-orange-100 to-orange-200 text-secondary-DEFAULT text-xs font-medium px-2 py-1 rounded-full shadow-sm">
-                                    Female
-                                </span>
-                            </div>
-                            
-                            {% if candidate.slogan %}
-                            <p class="text-sm italic text-gray-600 mb-3 min-h-[28px]">"{{ candidate.slogan }}"</p>
-                            {% else %}
-                            <div class="mb-3 min-h-[28px]"></div>
+                    {% for candidate in female_candidates %}
+                    <div class="candidate-card">
+                        <div class="candidate-card__top">
+                            {% if candidate.logo_path %}
+                            <img src="{{ candidate.logo_path }}" alt="" class="candidate-card__logo candidate-logo">
                             {% endif %}
-                            
-                            <button type="button" class="vote-btn female-vote-btn w-full py-2 px-4 bg-green-700 hover:bg-secondary-dark text-white font-medium rounded-full transition duration-300 flex items-center justify-center shadow-md" data-candidate-id="{{ candidate.id }}" data-gender="female">
-                                <i class="fas fa-vote-yea mr-2"></i> Vote
-                            </button>
+                            <span class="candidate-card__name">{{ candidate.name }}</span>
                         </div>
-                        {% endfor %}
+                        {% if candidate.slogan %}
+                        <p class="candidate-card__slogan">"{{ candidate.slogan }}"</p>
+                        {% else %}
+                        <p class="candidate-card__slogan"></p>
+                        {% endif %}
+                        <button type="button" class="vote-btn female-vote-btn" data-candidate-id="{{ candidate.id }}"
+                            data-gender="female">
+                            <i class="fas fa-vote-yea"></i> Vote
+                        </button>
+                    </div>
+                    {% endfor %}
                     {% else %}
-                    <div class="col-span-full">
-                        <div class="bg-gray-100 rounded-xl p-10 text-center text-gray-500">
-                            <i class="fas fa-user-slash text-4xl mb-3"></i>
-                            <p>No female candidates found</p>
-                        </div>
+                    <div class="col-span-full candidates-empty">
+                        <i class="fas fa-user-slash"></i><br>No female candidates available
                     </div>
                     {% endif %}
                 </div>
             </div>
+
         </div>
     </form>
 </div>
 
-<div id="confirmation-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 animate-fadeInUp">
-        <div class="bg-gradient-to-r from-primary-DEFAULT to-secondary-DEFAULT p-6 text-black text-center">
-            <div class="mx-auto w-20 h-20 bg-white bg-opacity-20 backdrop-blur-sm rounded-full flex items-center justify-center mb-3">
-                <i class="fas fa-check-circle text-5xl text-green"></i>
-            </div>
-            <h3 class="text-2xl font-bold">Thank You for Voting!</h3>
+<!-- Confirmation modal — IDs preserved -->
+<div id="confirmation-modal" class="modal hidden">
+    <div class="modal__box">
+        <div class="modal__band">
+            <span class="modal__icon">✓</span>
+            <p class="modal__title">Thank You for Voting!</p>
         </div>
-        <div class="p-6 text-center">
-            <p class="text-gray-600 mb-4">Your vote has been successfully recorded and will contribute to electing our new School Captains.</p>
-            <p class="text-gray-500 text-sm">Redirecting to home page in <span id="countdown">3</span> seconds...</p>
+        <div class="modal__body">
+            <p class="modal__text">Your vote has been successfully recorded and will contribute to electing our new
+                School Captains.</p>
+            <p class="modal__countdown">Redirecting to home page in <span id="countdown">3</span> seconds…</p>
         </div>
     </div>
 </div>
@@ -245,16 +534,15 @@
         history.pushState(null, null, document.URL);
     });
 
-    // Prevent refresh using F5, Ctrl+R, etc.
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if ((e.which || e.keyCode) == 116 ||
-            ((e.which || e.keyCode) == 82 && e.ctrlKey) || 
-            ((e.which || e.keyCode) == 116 && e.shiftKey)) { 
+            ((e.which || e.keyCode) == 82 && e.ctrlKey) ||
+            ((e.which || e.keyCode) == 116 && e.shiftKey)) {
             e.preventDefault();
         }
     });
 
-    const beforeUnloadHandler = function(e) {
+    const beforeUnloadHandler = function (e) {
         const message = 'You must complete your vote. Are you sure you want to leave?';
         e.returnValue = message;
         return message;
@@ -262,118 +550,88 @@
 
     window.addEventListener('beforeunload', beforeUnloadHandler);
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         let selectedMaleCandidate = null;
         let selectedFemaleCandidate = null;
-        
+
         const confirmationModal = document.getElementById('confirmation-modal');
         const maleVoteButtons = document.querySelectorAll('.male-vote-btn');
         const femaleVoteButtons = document.querySelectorAll('.female-vote-btn');
 
-        // console.log("Male cards:", document.querySelectorAll('#male-candidates-section .candidate-card').length);
-        // console.log("Female cards:", document.querySelectorAll('#female-candidates-section .candidate-card').length);
-        
         if (document.querySelectorAll('#male-candidates-section .candidate-card').length > 0) {
             const noMaleCandidatesMsg = document.querySelector('#male-candidates-section .col-span-full');
-            if (noMaleCandidatesMsg) {
-                noMaleCandidatesMsg.style.display = 'none';
-            }
+            if (noMaleCandidatesMsg) noMaleCandidatesMsg.style.display = 'none';
         }
-        
+
         if (document.querySelectorAll('#female-candidates-section .candidate-card').length > 0) {
             const noFemaleCandidatesMsg = document.querySelector('#female-candidates-section .col-span-full');
-            if (noFemaleCandidatesMsg) {
-                noFemaleCandidatesMsg.style.display = 'none';
-            }
+            if (noFemaleCandidatesMsg) noFemaleCandidatesMsg.style.display = 'none';
         }
-        
-        // document.querySelectorAll('.candidate-img').forEach((img, index) => {
-        //     if (img.tagName === 'IMG') {
-        //         console.log(`Image ${index + 1} src:`, img.src);
-        //     }
-        // });
-        
-        // document.querySelectorAll('.candidate-logo').forEach((img, index) => {
-        //     if (img.tagName === 'IMG') {
-        //         console.log(`Logo ${index + 1} src:`, img.src);
-        //     }
-        // });
-        
+
         maleVoteButtons.forEach(button => {
-            button.addEventListener('click', function() {
+            button.addEventListener('click', function () {
                 const candidateId = this.getAttribute('data-candidate-id');
-                const candidateName = this.closest('.candidate-card').querySelector('h4').textContent;
-                
+                const candidateName = this.closest('.candidate-card').querySelector('.candidate-card__name').textContent;
+
                 maleVoteButtons.forEach(btn => {
                     btn.closest('.candidate-card').classList.remove('selected-card');
-                    btn.innerHTML = '<i class="fas fa-vote-yea mr-2"></i> Vote for ' + 
-                        btn.closest('.candidate-card').querySelector('h4').textContent;
+                    const btnName = btn.closest('.candidate-card').querySelector('.candidate-card__name').textContent;
+                    btn.innerHTML = '<i class="fas fa-vote-yea mr-2"></i> Vote for ' + btnName;
                     btn.disabled = false;
                     btn.closest('.candidate-card').classList.remove('disabled');
                 });
-                
+
                 this.closest('.candidate-card').classList.add('selected-card');
                 this.innerHTML = '<i class="fas fa-check mr-2"></i> Selected';
-                
+
                 maleVoteButtons.forEach(btn => {
                     if (btn !== this) {
                         btn.disabled = true;
                         btn.closest('.candidate-card').classList.add('disabled');
                     }
                 });
-                
-                selectedMaleCandidate = {
-                    id: candidateId,
-                    name: candidateName
-                };
-                
+
+                selectedMaleCandidate = { id: candidateId, name: candidateName };
                 checkAndSubmitVote(this);
             });
         });
-        
+
         femaleVoteButtons.forEach(button => {
-            button.addEventListener('click', function() {
+            button.addEventListener('click', function () {
                 const candidateId = this.getAttribute('data-candidate-id');
-                const candidateName = this.closest('.candidate-card').querySelector('h4').textContent;
-                
+                const candidateName = this.closest('.candidate-card').querySelector('.candidate-card__name').textContent;
+
                 femaleVoteButtons.forEach(btn => {
                     btn.closest('.candidate-card').classList.remove('female-selected-card');
-                    btn.innerHTML = '<i class="fas fa-vote-yea mr-2"></i> Vote for ' + 
-                        btn.closest('.candidate-card').querySelector('h4').textContent;
+                    const btnName = btn.closest('.candidate-card').querySelector('.candidate-card__name').textContent;
+                    btn.innerHTML = '<i class="fas fa-vote-yea mr-2"></i> Vote for ' + btnName;
                     btn.disabled = false;
                     btn.closest('.candidate-card').classList.remove('disabled');
                 });
-                
+
                 this.closest('.candidate-card').classList.add('female-selected-card');
                 this.innerHTML = '<i class="fas fa-check mr-2"></i> Selected';
-                
+
                 femaleVoteButtons.forEach(btn => {
                     if (btn !== this) {
                         btn.disabled = true;
                         btn.closest('.candidate-card').classList.add('disabled');
                     }
                 });
-                
-                selectedFemaleCandidate = {
-                    id: candidateId,
-                    name: candidateName
-                };
-                
+
+                selectedFemaleCandidate = { id: candidateId, name: candidateName };
                 checkAndSubmitVote(this);
             });
         });
-        
-        // Function to check and submit vote if both candidates are selected
+
         function checkAndSubmitVote(lastClickedButton) {
             if (selectedMaleCandidate && selectedFemaleCandidate) {
                 window.removeEventListener('beforeunload', beforeUnloadHandler);
 
-                document.querySelectorAll('.vote-btn').forEach(btn => {
-                    btn.disabled = true;
-                });
+                document.querySelectorAll('.vote-btn').forEach(btn => { btn.disabled = true; });
 
                 lastClickedButton.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Submitting...';
-                
+
                 fetch('/cast_vote', {
                     method: 'POST',
                     headers: {
@@ -385,56 +643,63 @@
                         female_candidate_id: selectedFemaleCandidate.id
                     })
                 })
-                .then(response => {
-                    // Check if the response is a redirect
-                    if (response.redirected) {
-                        window.location.href = response.url;
-                        return null;
-                    }
-                    
-                    // Check if response is JSON
-                    const contentType = response.headers.get('content-type');
-                    if (contentType && contentType.includes('application/json')) {
-                        return response.json();
-                    } else {
-                        // For debugging
-                        console.error('Received non-JSON response:', response);
-                        return response.text().then(text => {
-                            console.error('Response text:', text);
-                            return { 
-                                success: false, 
-                                message: 'Server returned an invalid response. Please try again.' 
-                            };
-                        });
-                    }
-                })
-                .then(data => {
-                    if (!data) return; // Skip if null (redirect case)
-                    
-                    if (data.success) {
-                        window.removeEventListener('beforeunload', beforeUnloadHandler);
-                        
-                        confirmationModal.classList.remove('hidden');
-
-                        let count = 3;
-                        const countdownElement = document.getElementById('countdown');
-                        
-                        const countdownInterval = setInterval(function() {
-                            count--;
-                            countdownElement.textContent = count;
-                            
-                            if (count <= 0) {
-                                clearInterval(countdownInterval);
-                                window.location.href = '/'; 
-                            }
-                        }, 1000);
-                    } else {
-                        if (window.showToast) {
-                            window.showToast(data.message || 'An error occurred while casting your vote', 'error');
+                    .then(response => {
+                        if (response.redirected) { window.location.href = response.url; return null; }
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            return response.json();
                         } else {
-                            alert(data.message || 'An error occurred while casting your vote');
+                            return response.text().then(text => {
+                                console.error('Response text:', text);
+                                return { success: false, message: 'Server returned an invalid response. Please try again.' };
+                            });
                         }
-                        
+                    })
+                    .then(data => {
+                        if (!data) return;
+                        if (data.success) {
+                            window.removeEventListener('beforeunload', beforeUnloadHandler);
+                            confirmationModal.classList.remove('hidden');
+                            let count = 3;
+                            const countdownElement = document.getElementById('countdown');
+                            const countdownInterval = setInterval(function () {
+                                count--;
+                                countdownElement.textContent = count;
+                                if (count <= 0) { clearInterval(countdownInterval); window.location.href = '/'; }
+                            }, 1000);
+                        } else {
+                            if (window.showToast) {
+                                window.showToast(data.message || 'An error occurred while casting your vote', 'error');
+                            } else {
+                                alert(data.message || 'An error occurred while casting your vote');
+                            }
+                            if (selectedMaleCandidate) {
+                                maleVoteButtons.forEach(btn => {
+                                    if (btn.getAttribute('data-candidate-id') === selectedMaleCandidate.id) {
+                                        btn.disabled = false;
+                                        btn.innerHTML = '<i class="fas fa-check mr-2"></i> Selected';
+                                        btn.closest('.candidate-card').classList.remove('disabled');
+                                    }
+                                });
+                            }
+                            if (selectedFemaleCandidate) {
+                                femaleVoteButtons.forEach(btn => {
+                                    if (btn.getAttribute('data-candidate-id') === selectedFemaleCandidate.id) {
+                                        btn.disabled = false;
+                                        btn.innerHTML = '<i class="fas fa-check mr-2"></i> Selected';
+                                        btn.closest('.candidate-card').classList.remove('disabled');
+                                    }
+                                });
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        if (window.showToast) {
+                            window.showToast('An error occurred while casting your vote', 'error');
+                        } else {
+                            alert('An error occurred while casting your vote');
+                        }
+                        console.error('Error:', error);
                         if (selectedMaleCandidate) {
                             maleVoteButtons.forEach(btn => {
                                 if (btn.getAttribute('data-candidate-id') === selectedMaleCandidate.id) {
@@ -444,7 +709,6 @@
                                 }
                             });
                         }
-                        
                         if (selectedFemaleCandidate) {
                             femaleVoteButtons.forEach(btn => {
                                 if (btn.getAttribute('data-candidate-id') === selectedFemaleCandidate.id) {
@@ -454,36 +718,7 @@
                                 }
                             });
                         }
-                    }
-                })
-                .catch(error => {
-                    if (window.showToast) {
-                        window.showToast('An error occurred while casting your vote', 'error');
-                    } else {
-                        alert('An error occurred while casting your vote');
-                    }
-                    console.error('Error:', error);
-
-                    if (selectedMaleCandidate) {
-                        maleVoteButtons.forEach(btn => {
-                            if (btn.getAttribute('data-candidate-id') === selectedMaleCandidate.id) {
-                                btn.disabled = false;
-                                btn.innerHTML = '<i class="fas fa-check mr-2"></i> Selected';
-                                btn.closest('.candidate-card').classList.remove('disabled');
-                            }
-                        });
-                    }
-                    
-                    if (selectedFemaleCandidate) {
-                        femaleVoteButtons.forEach(btn => {
-                            if (btn.getAttribute('data-candidate-id') === selectedFemaleCandidate.id) {
-                                btn.disabled = false;
-                                btn.innerHTML = '<i class="fas fa-check mr-2"></i> Selected';
-                                btn.closest('.candidate-card').classList.remove('disabled');
-                            }
-                        });
-                    }
-                });
+                    });
             }
         }
     });
@@ -491,12 +726,12 @@
 
 {% if is_teacher %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const teacherBadge = document.createElement('div');
-        teacherBadge.className = 'fixed bottom-4 right-4 bg-primary-DEFAULT text-black px-3 py-1 rounded-full shadow-md';
-        teacherBadge.innerHTML = '<i class="fas fa-chalkboard-teacher mr-1"></i> Teacher Vote';
+        teacherBadge.className = 'teacher-badge';
+        teacherBadge.innerHTML = '<i class="fas fa-chalkboard-teacher"></i> Teacher Vote';
         document.body.appendChild(teacherBadge);
     });
 </script>
 {% endif %}
-{% endblock %} 
+{% endblock %}
